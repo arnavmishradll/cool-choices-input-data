@@ -75,10 +75,10 @@ pre { margin: 0; font-family: var(--mono); font-size: 13px; background: var(--so
 .rampl { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
 
 .three { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 270px); gap: 14px; }
-#gl { position: relative; height: min(62vh, 600px); background: #1b2028; border: 1px solid var(--line); overflow: hidden; }
-#gl canvas { display: block; width: 100% !important; height: 100% !important; }
-#gl .msg { position: absolute; inset: 0; display: grid; place-items: center; color: #cfd4da; font-size: 13px; }
-#gl .cap { position: absolute; left: 8px; top: 8px; font-size: 12px; color: #cfd4da; pointer-events: none; }
+.gl { position: relative; height: min(62vh, 600px); background: #1b2028; border: 1px solid var(--line); overflow: hidden; }
+.gl canvas { display: block; width: 100% !important; height: 100% !important; }
+.gl .msg { position: absolute; inset: 0; display: grid; place-items: center; color: #cfd4da; font-size: 13px; }
+.gl .cap { position: absolute; left: 8px; top: 8px; font-size: 12px; color: #cfd4da; pointer-events: none; }
 .three .side { max-height: min(62vh, 600px); overflow-y: auto; }
 input[type=range] { width: 100%; }
 
@@ -193,7 +193,7 @@ img.fig { width: 100%; border: 1px solid var(--line); }
   <h2>1 km downtown blocks in 3D (interactive)</h2>
   <div class="opts" id="cityTabs3"></div>
   <div class="three">
-    <div id="gl"><div class="msg" id="glmsg">Loading…</div><div class="cap" id="glcap"></div></div>
+    <div id="gl" class="gl"><div class="msg" id="glmsg">Loading…</div><div class="cap" id="glcap"></div></div>
     <div class="side">
       <div class="opts"><span class="l">Surface</span><span id="surfSeg" class="opts"></span></div>
       <div class="opts"><span class="l">Colour</span><span id="colSeg" class="opts"></span></div>
@@ -270,6 +270,160 @@ img.fig { width: 100%; border: 1px solid var(--line); }
   <div class="tw"><table id="srcTable"></table></div>
 </section>
 
+<section class="slide" id="part2" data-title="Part 2: Seattle, Denver, Boulder" style="justify-content:center">
+  <h1>SOLWEIG input data: three more cities</h1>
+  <p class="sub">Same pipeline, now with a tree canopy built from the lidar itself</p>
+  <p>Seattle, Denver, Boulder</p>
+</section>
+
+<section class="slide" data-title="Deliverables (new cities)">
+  <h2>What I produced</h2>
+  <p>Five rasters per city, for SOLWEIG:</p>
+  <ul>
+    <li><b>DEM</b>: bare-earth elevation</li>
+    <li><b>DSM</b>: ground plus buildings (no trees)</li>
+    <li><b>Land cover</b>: paved, building, grass, bare soil, water</li>
+    <li><b>CDSM</b>: tree canopy height from Meta / WRI (same as the first eight cities)</li>
+    <li><b>CDSM_lidar</b> (new): tree canopy height measured by the lidar, checked against NAIP imagery</li>
+  </ul>
+  <p>Same grid rules as before: 1 m pixels, the city's UTM zone, and the boundary's bounding box plus a 500 m buffer.</p>
+  <div class="tw"><table id="n_gridTable"></table></div>
+</section>
+
+<section class="slide" data-title="Sources (new cities)">
+  <h2>Data sources</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Layer</th><th>Source</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>DEM</td><td>USGS 3DEP 1 m DEMs</td><td>King County 2021 (Seattle); DRCOG 2020 with South Platte 2013, Eastern Colorado 2018 and Arapaho–Roosevelt NF 2023 for gaps (Denver, Boulder).</td></tr>
+      <tr><td>DSM roofs and lidar canopy</td><td>Airborne lidar from USGS Entwine: WA King County 2021, CO DRCOG 2020</td><td>Read over the whole grid this time, not only over buildings.</td></tr>
+      <tr><td>Building footprints</td><td>Overture Maps; Microsoft ML building footprints</td><td>Microsoft used only where Overture has no building.</td></tr>
+      <tr><td>Land cover</td><td>UrbanWatch 1 m, NOAA C-CAP 1 m, ESA WorldCover 10 m</td><td>UrbanWatch covers Seattle and the Denver city limits. C-CAP 1 m exists for Washington only.</td></tr>
+      <tr><td>Canopy</td><td>Meta / WRI canopy height v2; lidar vegetation returns</td><td>Both delivered, so SOLWEIG can be run with either.</td></tr>
+      <tr><td>NDVI</td><td>NAIP 2021–23 aerial imagery (red and near-infrared)</td><td>Used to keep only living vegetation in the lidar canopy.</td></tr>
+      <tr><td>Checks</td><td>Wikipedia building heights and elevations, Wikimedia photos</td><td>Validation only.</td></tr>
+    </tbody></table></div>
+  <p class="small">Full per-city list on the last slide.</p>
+</section>
+
+<section class="slide" data-title="Processing (new cities)">
+  <h2>Processing: what changed from the first eight</h2>
+  <ol>
+    <li><b>Lidar over the whole grid:</b> every octree node, all classes, at the finest level with point spacing of 1 m or less (Seattle 0.5 m, Boulder 0.79 m, Denver 0.93 m). Roofs, vegetation and coverage are kept in three working grids. Seattle was 55 GB of lidar, Denver 77 GB.</li>
+    <li><b>Lidar canopy:</b> highest vegetation return minus the DEM, kept only where NAIP shows living vegetation (NDVI above 0.12). Removed: buildings (plus 2 m), water, anything above 35 m, spikes more than 4 m above their neighbours, features thinner than 3 m (wires, poles, wall edges) and crowns under 6 m². Crowns are then closed and lightly smoothed.</li>
+    <li><b>NDVI:</b> NAIP read block by block from the Planetary Computer and resampled to the 1 m grid. Colorado NAIP is 0.3 m, so it was read at its 0.6 m overview.</li>
+    <li><b>Unchanged:</b> DEM mosaic, DSM roofs with nearest-roof gap fill, noise filters, land-cover priority, Microsoft building patch, flat-footprint fix, QA, landmark validation and benchmark.</li>
+  </ol>
+  <p class="small">Code: build_solweig_inputs.py (steps lidar, ndvi, canopylidar), run_chain.py runs the whole sequence for each city.</p>
+</section>
+
+<section class="slide" data-title="Source maps (new cities)">
+  <h2>Source maps (interactive)</h2>
+  <p class="sub">Which dataset each part of each raster came from. Scroll to zoom, drag to pan, hover a source map to read the dataset.</p>
+  <div class="opts" id="n_cityTabs"></div>
+  <div class="opts"><span class="l">Raster:</span><span id="n_layerSeg1" class="opts"></span><span class="l" style="margin-left:10px">Source:</span><span id="n_layerSeg2" class="opts"></span></div>
+  <div class="explorer">
+    <div class="stage" id="n_stage" tabindex="0" aria-label="Map; scroll to zoom, drag to pan">
+      <div class="inner" id="n_inner"><img id="n_mapimg" alt=""><svg id="n_outline"></svg></div>
+      <div class="zoom"><button id="n_zin" aria-label="Zoom in">+</button><button id="n_zout" aria-label="Zoom out">−</button><button id="n_zreset" aria-label="Reset view">↺</button></div>
+      <div class="readout" id="n_readout">City boundary outlined</div>
+    </div>
+    <div class="side"><b id="n_legendTitle"></b><span class="small" id="n_layerNote"></span><div id="n_legend"></div><span class="small" id="n_facts"></span></div>
+  </div>
+</section>
+
+<section class="slide" data-title="Issues and fixes (new cities)">
+  <h2>Issues found and how I fixed them</h2>
+  <div class="tw"><table id="n_issues"></table></div>
+</section>
+
+<section class="slide" data-title="Roofs (new cities)">
+  <h2>Roofs: lidar coverage</h2>
+  <p>All three cities sit inside one recent lidar survey, so almost every roof pixel has its own lidar return. The rest are filled from the nearest roof point on the same building.</p>
+  <div class="tw"><table id="n_roofTable"></table></div>
+  <p class="small">Footprints with no roof in the lidar (built after the flight, or demolished) were handled as before: Overture height, then Microsoft, then the city's typical lidar house height; footprints with nothing standing were set to paved.</p>
+</section>
+
+<section class="slide" data-title="3D blocks (new cities)">
+  <h2>1 km blocks in 3D (interactive)</h2>
+  <div class="opts" id="n_cityTabs3"></div>
+  <div class="three">
+    <div id="n_gl" class="gl"><div class="msg" id="n_glmsg">Loading…</div><div class="cap" id="n_glcap"></div></div>
+    <div class="side">
+      <div class="opts"><span class="l">Surface</span><span id="n_surfSeg" class="opts"></span></div>
+      <div class="opts"><span class="l">Colour</span><span id="n_colSeg" class="opts"></span></div>
+      <div id="n_colLegend" class="legend"></div>
+      <div class="opts"><span class="l">Roofs</span><span id="n_methSeg" class="opts"></span></div>
+      <span class="small" id="n_methNote"></span>
+      <span class="small" id="n_compare"></span>
+      <div class="opts"><span class="l">Trees</span><span id="n_treeSeg" class="opts"></span></div>
+      <span class="small" id="n_treeStats"></span>
+      <div style="border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:6px">
+        <label class="small"><input type="checkbox" id="n_sunOn"> <b>Sun and shadows</b></label>
+        <div class="opts"><span class="l">Date</span><span id="n_dateSeg" class="opts"></span></div>
+        <label class="small" for="n_sunT">Solar time: <span id="n_sunTv">12:00</span></label>
+        <input type="range" id="n_sunT" min="5" max="20" step="0.1" value="12">
+        <div class="opts"><button id="n_sunPlay" aria-pressed="false">Play day</button></div>
+        <span class="small" id="n_sunInfo"></span>
+      </div>
+      <label class="small" for="n_exag">Vertical exaggeration: <span id="n_exagv">1×</span></label><input type="range" id="n_exag" min="1" max="4" step="0.25" value="1">
+      <label class="small"><input type="checkbox" id="n_spin" checked> Rotate</label>
+    </div>
+  </div>
+  <p class="small">1 m data. Drag to rotate, scroll to zoom, right-drag to pan. Seattle and Denver blocks are centred on the tallest building, Boulder on downtown (Pearl Street). Trees: "Lidar" is the new CDSM_lidar, "Meta" the Meta / WRI canopy.</p>
+</section>
+
+<section class="slide" data-title="Validation: landmarks (new cities)">
+  <h2>Validation: <span id="n_valCount"></span> landmarks</h2>
+  <p>Same criteria as before: buildings within 10 m or 10%, summits and ground within 5 m, water classified as water and flat. Boulder has no towers with published heights (city height limit of 55 ft), so it is checked on two summits, Folsom Field and Boulder Reservoir. All 18 pass.</p>
+  <div class="chart"><svg id="n_errChart"></svg></div>
+</section>
+
+<section class="slide" data-title="Validation: benchmark (new cities)">
+  <h2>Validation: tall buildings</h2>
+  <p>Highest point in the DSM vs published height, for every building on Wikipedia's tallest-buildings lists for Seattle and Denver that was standing when the lidar was flown. Hover a point for details.</p>
+  <div class="chart"><svg id="n_scatter"></svg></div>
+  <p class="small">The three Denver points far below the line (707 17th Street, 555 17th Street, 17th Street Plaza) are matching misses: the footprint found at the Wikipedia coordinates is a low building (10–55 m), not the tower.</p>
+  <div class="tw"><table id="n_benchTable"></table></div>
+</section>
+
+<section class="slide" data-title="Validation sheets (new cities)">
+  <h2>Validation sheets</h2>
+  <p class="sub">One sheet per landmark: photo, top-down lidar image, raster, and a cross-section through the highest point. Click to enlarge.</p>
+  <div class="opts" id="n_valTabs"></div>
+  <div class="gallery" id="n_gallery"></div>
+</section>
+
+<section class="slide" data-title="Lidar canopy (new cities)">
+  <h2>Canopy: Meta vs the new lidar canopy</h2>
+  <p>Citywide, over the full grid (trees taller than 2 m):</p>
+  <div class="tw"><table id="n_canopyCity"></table></div>
+  <p>On each 1 km block, with the same check used for the first eight cities:</p>
+  <div class="tw"><table id="n_canopyTable"></table></div>
+  <p class="small">Meta is a model trained on imagery; the lidar canopy is measured. The 3D block slide switches between the two.</p>
+</section>
+
+<section class="slide" data-title="Remaining issues (new cities)">
+  <h2>Remaining issues and next steps</h2>
+  <div class="two">
+    <div><h3>Remaining issues</h3><ul>
+      <li>Boulder land cover is 10 m (WorldCover) with 1 m buildings: Denver's UrbanWatch stops at the Denver city limits and Colorado has no 1 m C-CAP.</li>
+      <li>Denver outside the city limits (74% of the grid) is also 10 m land cover.</li>
+      <li>Buildings finished after the 2020–21 lidar use estimated heights.</li>
+    </ul></div>
+    <div><h3>Next steps</h3><ol>
+      <li>Austin: lidar finished (276,000 nodes, about 190 GB); DSM, land cover and canopy next.</li>
+      <li>Atlanta: queued after Austin.</li>
+      <li>Run SOLWEIG with both canopies and compare.</li>
+    </ol></div>
+  </div>
+</section>
+
+<section class="slide" data-title="Appendix: sources (new cities)">
+  <h2>Appendix: sources by city</h2>
+  <div class="tw"><table id="n_srcTable"></table></div>
+</section>
+
 </main>
 
 <div class="tip" id="tip"></div>
@@ -289,7 +443,15 @@ const CITIES = [
   { id: "philadelphia", name: "Philadelphia", area: 914, epsg: 26918, dims: "29,108 × 31,398", lidar: "NOAA 2022 Philadelphia", spacing: "~1 m", oldRoof: 54, newRoof: 66.6, cap: 380 },
   { id: "tucson", name: "Tucson", area: 1319, epsg: 26912, dims: "34,677 × 38,023", lidar: "USGS AZ Pima County 2021", spacing: "0.59 m", oldRoof: 84, newRoof: 98.2, cap: 150 },
 ];
-const byId = Object.fromEntries(CITIES.map(c => [c.id, c]));
+const NEW_CITIES = [
+  { id: "seattle", name: "Seattle", area: 259, epsg: 26910, dims: "16,969 × 28,216", lidar: "USGS WA King County 2021", spacing: "0.50 m", cap: 330, roof: [99.87, 0.13], spikes: 308825,
+    canopy: { meta: [82.4, 11.8], lidar: [68.9, 12.9] } },
+  { id: "denver", name: "Denver", area: 447, epsg: 26913, dims: "45,072 × 34,730", lidar: "USGS CO DRCOG 2020", spacing: "0.93 m", cap: 260, roof: [99.47, 0.53], spikes: 168154,
+    canopy: { meta: [86.8, 6.5], lidar: [148.1, 8.3] } },
+  { id: "boulder", name: "Boulder", area: 92, epsg: 26913, dims: "11,941 × 16,654", lidar: "USGS CO DRCOG 2020", spacing: "0.79 m", cap: 120, roof: [99.86, 0.14], spikes: 24359,
+    canopy: { meta: [35.2, 7.6], lidar: [39.6, 9.4] } },
+];
+const byId = Object.fromEntries([...CITIES, ...NEW_CITIES].map(c => [c.id, c]));
 const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (html) e.innerHTML = html; return e; };
 const fmt = n => n.toLocaleString("en-US");
@@ -320,9 +482,14 @@ addEventListener("keydown", e => {
   else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); go(cur - 1); }
 });
 setCount(0);
+// index.html#part2 opens at the first slide of part 2 (Seattle, Denver, Boulder)
+if (location.hash === "#part2") addEventListener("load", () => go(slides.indexOf($("#part2"))));
 
 /* tables */
-$("#gridTable").innerHTML = `<thead><tr><th>City</th><th class="n">Grid (pixels)</th><th class="n">Area (km²)</th><th>EPSG</th><th>Roof lidar</th><th class="n">Height cap</th></tr></thead><tbody>${CITIES.map(c => `<tr><td>${c.name}</td><td class="n">${c.dims}</td><td class="n">${fmt(c.area)}</td><td>${c.epsg}</td><td>${c.lidar}</td><td class="n">${c.cap} m</td></tr>`).join("")}<tr><td><b>Total</b></td><td></td><td class="n"><b>${fmt(CITIES.reduce((a, c) => a + c.area, 0))}</b></td><td colspan="3"></td></tr></tbody>`;
+const gridTable = (id, cities) => { $(id).innerHTML = `<thead><tr><th>City</th><th class="n">Grid (pixels)</th><th class="n">Area (km²)</th><th>EPSG</th><th>Roof lidar</th><th class="n">Height cap</th></tr></thead><tbody>${cities.map(c => `<tr><td>${c.name}</td><td class="n">${c.dims}</td><td class="n">${fmt(c.area)}</td><td>${c.epsg}</td><td>${c.lidar}</td><td class="n">${c.cap} m</td></tr>`).join("")}<tr><td><b>Total</b></td><td></td><td class="n"><b>${fmt(cities.reduce((a, c) => a + c.area, 0))}</b></td><td colspan="3"></td></tr></tbody>`; };
+gridTable("#gridTable", CITIES);
+gridTable("#n_gridTable", NEW_CITIES);
+$("#n_roofTable").innerHTML = `<thead><tr><th>City</th><th>Lidar spacing</th><th class="n">Roof pixels with a lidar return</th><th class="n">Filled from nearest roof point</th><th class="n">Spike pixels removed</th></tr></thead><tbody>${NEW_CITIES.map(c => `<tr><td>${c.name}</td><td>${c.spacing}</td><td class="n">${c.roof[0]}%</td><td class="n">${c.roof[1]}%</td><td class="n">${fmt(c.spikes)}</td></tr>`).join("")}</tbody>`;
 $("#roofTable").innerHTML = `<thead><tr><th>City</th><th>Lidar spacing (rebuild)</th><th class="n">Roof pixels with lidar, first pass</th><th class="n">Rebuild</th></tr></thead><tbody>${CITIES.map(c => `<tr><td>${c.name}</td><td>${c.spacing}</td><td class="n">${c.oldRoof}%</td><td class="n">${c.newRoof}%</td></tr>`).join("")}</tbody>`;
 const ISSUES = [
   ["All", "Raw lidar for four cities was ~870 GB on a slow server", "Streamed cloud-optimised lidar and read only nodes over buildings"],
@@ -343,7 +510,24 @@ const ISSUES = [
   ["Houston", "QA flag: 2,001 non-water pixels at 0 m", "Checked: docks and barges on the Ship Channel. No change"],
   ["All", "Patched rasters grew in size (Houston DSM 42.7 GB)", "Rewrote and verified every raster; 45 GB freed"],
 ];
-$("#issues").innerHTML = `<thead><tr><th>City</th><th>Issue</th><th>Fix / result</th></tr></thead><tbody>${ISSUES.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</tbody>`;
+const NEW_ISSUES = [
+  ["All", "Lidar step froze with the working grids on the external USB drive (random writes to 20 GB of grids)", "Working grids moved to the laptop's SSD; finished rasters still written to the external drive"],
+  ["All", "NAIP downloads failed with HTTP 403 after about 15 minutes (Planetary Computer access tokens expire)", "Token renewed 5 minutes before its expiry time"],
+  ["Boulder", "First NDVI came out 77% empty: the warp silently filled failed reads with zeros", "Explicit strip reads with retries and a fresh connection per retry; rebuilt and checked"],
+  ["Boulder, Denver", "Colorado NAIP is 0.3 m, so each block read 4× the data needed for a 1 m grid", "Read at its 0.6 m overview. Same result as full resolution (correlation 0.998, vegetation overlap 0.98)"],
+  ["Boulder, Denver", "NDVI crashed (memory corruption inside GDAL) with 6 threads running while the lidar downloaded", "4 threads, single-threaded resampling, and every NDVI block saved so a crash resumes where it stopped"],
+  ["Seattle", "City boundary file labelled with the wrong coordinate system (EPSG:26960)", "Re-labelled and reprojected to UTM 10N (EPSG:26910); original kept"],
+  ["Seattle", "12.7 km² of the grid outside the King County 1 m DEM", "Filled from the USGS 10 m DEM"],
+  ["Denver", "UrbanWatch Denver covers only the city limits (26% of the grid)", "UrbanWatch inside the city, WorldCover 10 m outside, buildings at 1 m everywhere"],
+  ["Boulder", "No 1 m land cover: Denver's UrbanWatch stops before Boulder, no Colorado C-CAP 1 m", "WorldCover 10 m with 1 m buildings, as for Tucson"],
+  ["Seattle", "15,791 footprints with no roof in the lidar", "4,175 given a height (Overture, Microsoft, or 5.5 m typical house); 11,616 with nothing standing set to paved"],
+  ["Denver", "19,717 footprints with no roof in the lidar", "14,164 given a height (typical house 4.8 m); 5,553 set to paved"],
+  ["All", "Microsoft buildings missing from Overture", "Added: 928 in Seattle, 1,773 in Denver, 40 in Boulder"],
+  ["Denver", "External drive unplugged during the lidar canopy step", "All steps resumed from their saved state; only the partial canopy file was redone"],
+];
+const issuesTable = (id, rows) => { $(id).innerHTML = `<thead><tr><th>City</th><th>Issue</th><th>Fix / result</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</tbody>`; };
+issuesTable("#issues", ISSUES);
+issuesTable("#n_issues", NEW_ISSUES);
 const SRC = {
   miami: ["USGS 3DEP FL Miami-Dade 2023", "NOAA 2021 Miami-Dade lidar", "UrbanWatch 2017, C-CAP FL 2022, WorldCover"],
   dallas: ["USGS 3DEP TX Pecos–Dallas 2018–19", "USGS TX Pecos–Dallas 2018–19 lidar", "UrbanWatch Dallas 2016, Denton Co. 2020, WorldCover"],
@@ -354,335 +538,370 @@ const SRC = {
   philadelphia: ["USGS 3DEP Delaware Valley 2015", "NOAA 2022 Philadelphia lidar", "UrbanWatch Philadelphia 2017, C-CAP NJ 2020, WorldCover"],
   tucson: ["USGS 3DEP AZ Pima County 2021, Eastern Pima 2015", "USGS AZ Pima County 2021 lidar", "ESA WorldCover 2021 + 1 m buildings"],
 };
-$("#srcTable").innerHTML = `<thead><tr><th>City</th><th>DEM</th><th>DSM roofs</th><th>Land cover</th><th>Canopy</th></tr></thead><tbody>${CITIES.map(c => `<tr><td>${c.name}</td><td>${SRC[c.id][0]}</td><td>${SRC[c.id][1]}</td><td>${SRC[c.id][2]}</td><td>Meta / WRI CHM v2</td></tr>`).join("")}</tbody>`;
+Object.assign(SRC, {
+  seattle: ["USGS 3DEP WA King County 2021, 10 m fill", "USGS WA King County 2021 lidar", "UrbanWatch Seattle 2017, C-CAP WA 2021, WorldCover", "Meta / WRI CHM v2; lidar canopy (King County 2021, NAIP)"],
+  denver: ["USGS 3DEP CO DRCOG 2020, South Platte 2013, Eastern Colorado 2018", "USGS CO DRCOG 2020 lidar", "UrbanWatch Denver 2017, WorldCover", "Meta / WRI CHM v2; lidar canopy (DRCOG 2020, NAIP)"],
+  boulder: ["USGS 3DEP CO DRCOG 2020, South Platte 2013, Arapaho–Roosevelt NF 2023", "USGS CO DRCOG 2020 lidar", "ESA WorldCover 2021 + 1 m buildings", "Meta / WRI CHM v2; lidar canopy (DRCOG 2020, NAIP)"],
+});
+const srcTable = (id, cities) => { $(id).innerHTML = `<thead><tr><th>City</th><th>DEM</th><th>DSM roofs</th><th>Land cover</th><th>Canopy</th></tr></thead><tbody>${cities.map(c => `<tr><td>${c.name}</td><td>${SRC[c.id][0]}</td><td>${SRC[c.id][1]}</td><td>${SRC[c.id][2]}</td><td>${SRC[c.id][3] ?? "Meta / WRI CHM v2"}</td></tr>`).join("")}</tbody>`; };
+srcTable("#srcTable", CITIES);
+srcTable("#n_srcTable", NEW_CITIES);
 
 /* source maps */
 const L1 = [["dem", "DEM"], ["dsm", "Building height"], ["landcover", "Land cover"], ["canopy", "Canopy"]];
 const L2 = [["dem_src", "DEM"], ["dsm_src", "Roofs"], ["landcover_src", "Land cover"], ["lidar", "Lidar coverage"]];
 const NOTES = {
-  dem: "Bare-earth elevation.", dsm: "DSM − DEM, log scale.", landcover: "SOLWEIG classes.", canopy: "Meta canopy height.",
+  dem: "Bare-earth elevation.", dsm: "DSM − DEM, log scale.", landcover: "SOLWEIG classes.", canopy: "Meta canopy height.", canopy_lidar: "Lidar canopy height (CDSM_lidar).",
   dem_src: "USGS survey used for each area, in mosaic order.", dsm_src: "Roof height from lidar or estimated.",
   landcover_src: "Land-cover dataset used for each area. Buildings are from footprints.", lidar: "Share of 1 m pixels with a lidar return (lidar was read over buildings only).",
 };
-const RAMPS = { dem: ["#1d4e89", "#2a9d8f", "#e9c46a", "#f4a261", "#9c4f2e", "#f2efe9"], dsm: ["#20242e", "#3d4f7a", "#5d7fc0", "#d36a8c", "#f39a54", "#fff1b8"], canopy: ["#f3efe4", "#cfe3b4", "#86c06c", "#3a8f4b", "#0f4d2c"], lidar: ["#0b1d2e", "#14506e", "#1f8a8a", "#7cc68b", "#f1f29b"] };
-let city = "nyc", layer = "dem_src", info = null;
-const view = { s: 1, x: 0, y: 0 };
-const pick = document.createElement("canvas"); const pctx = pick.getContext("2d", { willReadFrequently: true });
-let pickReady = false, colorIndex = null, needFit = true;
-async function renderExplorer(newCity) {
-  opts($("#cityTabs"), cityItems, city, id => { city = id; renderExplorer(true); });
-  opts($("#layerSeg1"), L1, layer, k => { layer = k; renderExplorer(false); });
-  opts($("#layerSeg2"), L2, layer, k => { layer = k; renderExplorer(false); });
-  info = await getJSON(`data/${city}/city.json`);
-  const m = info.maps[layer];
-  const ext = (layer === "landcover" || layer.endsWith("_src")) ? "png" : "webp";
-  const img = $("#mapimg"); pickReady = false; if (newCity) needFit = true;
-  img.onload = () => {
-    img.style.width = info.width + "px"; img.style.height = info.height + "px";
-    if (m.type === "classes") { pick.width = info.width; pick.height = info.height; pctx.drawImage(img, 0, 0); colorIndex = new Map(m.colors.map((c, i) => [c.toLowerCase(), i])); pickReady = true; }
-    if (needFit) fitView();
-  };
-  img.src = `data/${city}/maps/${layer}.${ext}`;
-  const svg = $("#outline");
-  svg.setAttribute("width", info.width); svg.setAttribute("height", info.height); svg.setAttribute("viewBox", `0 0 ${info.width} ${info.height}`);
-  svg.innerHTML = info.outline.map(r => `<polygon points="${r.map(p => p.join(",")).join(" ")}" fill="none" stroke="#fff" stroke-width="1.4" vector-effect="non-scaling-stroke"/><polygon points="${r.map(p => p.join(",")).join(" ")}" fill="none" stroke="#000" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`).join("");
-  $("#legendTitle").textContent = (L1.find(x => x[0] === layer) ? "" : "Source: ") + [...L1, ...L2].find(x => x[0] === layer)[1];
-  $("#layerNote").textContent = NOTES[layer];
-  if (m.type === "classes") $("#legend").innerHTML = `<div class="legend">${m.legend.map((n, i) => m.shares[i] > 0 ? `<div class="r"><span class="sw" style="background:${m.colors[i]}"></span><span>${n}</span><span class="p">${m.shares[i].toFixed(1)}%</span></div>` : "").join("")}</div>`;
-  else $("#legend").innerHTML = `<div class="ramp" style="background:linear-gradient(90deg,${RAMPS[layer].join(",")})"></div><div class="rampl"><span>${m.min}</span><span>${m.max} ${m.unit}</span></div>`;
-  const c = byId[city];
-  $("#facts").textContent = `${c.dims} px, ${fmt(c.area)} km², EPSG:${c.epsg}. Map shown at ${info.cell_m} m per pixel.`;
-  $("#readout").textContent = m.type === "classes" ? "Hover to read the source" : "City boundary outlined";
+const RAMPS = { dem: ["#1d4e89", "#2a9d8f", "#e9c46a", "#f4a261", "#9c4f2e", "#f2efe9"], dsm: ["#20242e", "#3d4f7a", "#5d7fc0", "#d36a8c", "#f39a54", "#fff1b8"], canopy: ["#f3efe4", "#cfe3b4", "#86c06c", "#3a8f4b", "#0f4d2c"], canopy_lidar: ["#f3efe4", "#cfe3b4", "#86c06c", "#3a8f4b", "#0f4d2c"], lidar: ["#0b1d2e", "#14506e", "#1f8a8a", "#7cc68b", "#f1f29b"] };
+function explorer(P, cities, L1, L2, city, layer) {
+  const Q = id => document.getElementById(P + id), items = cities.map(c => [c.id, c.name]);
+  let info = null;
+  const view = { s: 1, x: 0, y: 0 };
+  const pick = document.createElement("canvas"); const pctx = pick.getContext("2d", { willReadFrequently: true });
+  let pickReady = false, colorIndex = null, needFit = true;
+  async function renderExplorer(newCity) {
+    opts(Q("cityTabs"), items, city, id => { city = id; renderExplorer(true); });
+    opts(Q("layerSeg1"), L1, layer, k => { layer = k; renderExplorer(false); });
+    opts(Q("layerSeg2"), L2, layer, k => { layer = k; renderExplorer(false); });
+    info = await getJSON(`data/${city}/city.json`);
+    const m = info.maps[layer];
+    const ext = (layer === "landcover" || layer.endsWith("_src")) ? "png" : "webp";
+    const img = Q("mapimg"); pickReady = false; if (newCity) needFit = true;
+    img.onload = () => {
+      img.style.width = info.width + "px"; img.style.height = info.height + "px";
+      if (m.type === "classes") { pick.width = info.width; pick.height = info.height; pctx.drawImage(img, 0, 0); colorIndex = new Map(m.colors.map((c, i) => [c.toLowerCase(), i])); pickReady = true; }
+      if (needFit) fitView();
+    };
+    img.src = `data/${city}/maps/${layer}.${ext}`;
+    const svg = Q("outline");
+    svg.setAttribute("width", info.width); svg.setAttribute("height", info.height); svg.setAttribute("viewBox", `0 0 ${info.width} ${info.height}`);
+    svg.innerHTML = info.outline.map(r => `<polygon points="${r.map(p => p.join(",")).join(" ")}" fill="none" stroke="#fff" stroke-width="1.4" vector-effect="non-scaling-stroke"/><polygon points="${r.map(p => p.join(",")).join(" ")}" fill="none" stroke="#000" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`).join("");
+    Q("legendTitle").textContent = (L1.find(x => x[0] === layer) ? "" : "Source: ") + [...L1, ...L2].find(x => x[0] === layer)[1];
+    Q("layerNote").textContent = NOTES[layer];
+    if (m.type === "classes") Q("legend").innerHTML = `<div class="legend">${m.legend.map((n, i) => m.shares[i] > 0 ? `<div class="r"><span class="sw" style="background:${m.colors[i]}"></span><span>${n}</span><span class="p">${m.shares[i].toFixed(1)}%</span></div>` : "").join("")}</div>`;
+    else Q("legend").innerHTML = `<div class="ramp" style="background:linear-gradient(90deg,${RAMPS[layer].join(",")})"></div><div class="rampl"><span>${m.min}</span><span>${m.max} ${m.unit}</span></div>`;
+    const c = byId[city];
+    Q("facts").textContent = `${c.dims} px, ${fmt(c.area)} km², EPSG:${c.epsg}. Map shown at ${info.cell_m} m per pixel.`;
+    Q("readout").textContent = m.type === "classes" ? "Hover to read the source" : "City boundary outlined";
+  }
+  function fitView() { const st = Q("stage").getBoundingClientRect(); if (!st.width || !info) return; view.s = Math.min(st.width / info.width, st.height / info.height); view.x = (st.width - info.width * view.s) / 2; view.y = (st.height - info.height * view.s) / 2; applyView(); needFit = false; }
+  function applyView() { Q("inner").style.transform = `translate(${view.x}px,${view.y}px) scale(${view.s})`; }
+  function zoomAt(f, cx, cy) { const ns = Math.min(Math.max(view.s * f, 0.05), 40); view.x = cx - (cx - view.x) * (ns / view.s); view.y = cy - (cy - view.y) * (ns / view.s); view.s = ns; applyView(); }
+  const stage = Q("stage");
+  stage.addEventListener("wheel", e => { e.preventDefault(); const r = stage.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  let drag = null;
+  stage.addEventListener("pointerdown", e => { if (e.target.closest(".zoom")) return; drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; stage.classList.add("drag"); stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener("pointermove", e => {
+    if (drag) { view.x = drag.vx + e.clientX - drag.x; view.y = drag.vy + e.clientY - drag.y; applyView(); return; }
+    if (!pickReady || !info) return;
+    const r = stage.getBoundingClientRect();
+    const px = Math.floor((e.clientX - r.left - view.x) / view.s), py = Math.floor((e.clientY - r.top - view.y) / view.s);
+    if (px < 0 || py < 0 || px >= info.width || py >= info.height) return;
+    const d = pctx.getImageData(px, py, 1, 1).data;
+    const i = colorIndex.get("#" + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, "0")).join(""));
+    Q("readout").textContent = i === undefined ? "—" : info.maps[layer].legend[i];
+  });
+  const endDrag = () => { drag = null; stage.classList.remove("drag"); };
+  stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
+  Q("zin").onclick = () => { const r = stage.getBoundingClientRect(); zoomAt(1.4, r.width / 2, r.height / 2); };
+  Q("zout").onclick = () => { const r = stage.getBoundingClientRect(); zoomAt(1 / 1.4, r.width / 2, r.height / 2); };
+  Q("zreset").onclick = fitView;
+  new ResizeObserver(() => fitView()).observe(stage);
+  renderExplorer(true);
 }
-function fitView() { const st = $("#stage").getBoundingClientRect(); if (!st.width || !info) return; view.s = Math.min(st.width / info.width, st.height / info.height); view.x = (st.width - info.width * view.s) / 2; view.y = (st.height - info.height * view.s) / 2; applyView(); needFit = false; }
-function applyView() { $("#inner").style.transform = `translate(${view.x}px,${view.y}px) scale(${view.s})`; }
-function zoomAt(f, cx, cy) { const ns = Math.min(Math.max(view.s * f, 0.05), 40); view.x = cx - (cx - view.x) * (ns / view.s); view.y = cy - (cy - view.y) * (ns / view.s); view.s = ns; applyView(); }
-const stage = $("#stage");
-stage.addEventListener("wheel", e => { e.preventDefault(); const r = stage.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
-let drag = null;
-stage.addEventListener("pointerdown", e => { if (e.target.closest(".zoom")) return; drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; stage.classList.add("drag"); stage.setPointerCapture(e.pointerId); });
-stage.addEventListener("pointermove", e => {
-  if (drag) { view.x = drag.vx + e.clientX - drag.x; view.y = drag.vy + e.clientY - drag.y; applyView(); return; }
-  if (!pickReady || !info) return;
-  const r = stage.getBoundingClientRect();
-  const px = Math.floor((e.clientX - r.left - view.x) / view.s), py = Math.floor((e.clientY - r.top - view.y) / view.s);
-  if (px < 0 || py < 0 || px >= info.width || py >= info.height) return;
-  const d = pctx.getImageData(px, py, 1, 1).data;
-  const i = colorIndex.get("#" + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, "0")).join(""));
-  $("#readout").textContent = i === undefined ? "—" : info.maps[layer].legend[i];
-});
-const endDrag = () => { drag = null; stage.classList.remove("drag"); };
-stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
-$("#zin").onclick = () => { const r = stage.getBoundingClientRect(); zoomAt(1.4, r.width / 2, r.height / 2); };
-$("#zout").onclick = () => { const r = stage.getBoundingClientRect(); zoomAt(1 / 1.4, r.width / 2, r.height / 2); };
-$("#zreset").onclick = fitView;
-new ResizeObserver(() => fitView()).observe(stage);
-renderExplorer(true);
+explorer("", CITIES, L1, L2, "nyc", "dem_src");
+explorer("n_", NEW_CITIES, [...L1, ["canopy_lidar", "Lidar canopy"]], L2.filter(x => x[0] !== "lidar"), "seattle", "dem_src");
 
 /* 3D */
-const N = 1000;
-let city3 = "philadelphia", surf = "dsm", colorBy = "prov", method = "new", exag = 1, treeSrc = "lidar";
-const tileCache = {};
-async function loadPng(url) {
-  const blob = await (await fetch(url)).blob();
-  const bmp = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
-  const cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height;
-  const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(bmp, 0, 0);
-  return cx.getImageData(0, 0, bmp.width, bmp.height).data;
-}
-async function getTile(id) {
-  if (tileCache[id]) return tileCache[id];
-  const meta = (await getJSON(`data/${id}/city.json`)).tile;
-  const [A, Bm, C] = await Promise.all(["a", "b", "c"].map(k => loadPng(`data/${id}/tile_${k}.png`)));
-  const n = N * N, dsm = new Float32Array(n), dem = new Float32Array(n), old = new Float32Array(n);
-  const lc = new Uint8Array(n), prov = new Uint8Array(n), cdsm = new Uint8Array(n);
-  for (let k = 0, q = 0; k < n; k++, q += 4) {
-    dsm[k] = meta.zmin + (A[q] * 256 + A[q + 1]) * meta.zscale; lc[k] = A[q + 2];
-    dem[k] = meta.zmin + (Bm[q] * 256 + Bm[q + 1]) * meta.zscale; prov[k] = Bm[q + 2];
-    old[k] = meta.zmin + (C[q] * 256 + C[q + 1]) * meta.zscale; cdsm[k] = C[q + 2];
+function viewer3D(P, cities, city3) {
+  const Q = id => document.getElementById(P + id), items = cities.map(c => [c.id, c.name]);
+  const N = 1000;
+  let surf = "dsm", colorBy = "prov", method = "new", exag = 1, treeSrc = "lidar";
+  const tileCache = {};
+  async function loadPng(url) {
+    const blob = await (await fetch(url)).blob();
+    const bmp = await createImageBitmap(blob, { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+    const cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height;
+    const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(bmp, 0, 0);
+    return cx.getImageData(0, 0, bmp.width, bmp.height).data;
   }
-  const t = { meta, dsm, dem, old, lc, cdsm, prov, cdsmLidar: null };
-  if (meta.canopy_compare) { try { const D = await loadPng(`data/${id}/tile_d.png`); t.cdsmLidar = new Uint8Array(n); for (let k = 0; k < n; k++) t.cdsmLidar[k] = D[k * 4]; } catch (e) { t.cdsmLidar = null; } }
-  let s = 0; for (let i = 0; i < n; i += 97) s += dem[i]; t.base = s / Math.ceil(n / 97);
-  return (tileCache[id] = t);
-}
-let renderer, scene, camera, controls, mesh, geo, trunks, canopy, canGeo, sun, hemi, glReady = false;
-function initGL() {
-  const host = $("#gl");
-  renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setClearColor(0x1b2028, 1);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); host.prepend(renderer.domElement);
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
-  scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x1b2028, 1800, 4200);
-  camera = new THREE.PerspectiveCamera(42, 1, 1, 6000); camera.position.set(820, 700, 980);
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.6; controls.target.set(0, 70, 0); controls.maxPolarAngle = Math.PI * 0.49;
-  hemi = new THREE.HemisphereLight(0xdfe8f2, 0x2a2016, 0.9); scene.add(hemi);
-  sun = new THREE.DirectionalLight(0xfff1dc, 1.6); sun.position.set(-500, 900, 300); scene.add(sun, sun.target);
-  sun.shadow.mapSize.set(4096, 4096);
-  Object.assign(sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 6000 });
-  sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6; sun.castShadow = true;
-  geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3);
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = (j * N + i) * 3; pos[k] = i - N / 2; pos[k + 2] = j - N / 2; }
-  const idx = new Uint32Array((N - 1) * (N - 1) * 6); let q = 0;
-  for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) { const a = j * N + i, b = a + 1, c = a + N, d = c + 1; idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d; }
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
-  mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
-  canGeo = new THREE.BufferGeometry();
-  canGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
-  canGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
-  canopy = new THREE.Mesh(canGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide })); canopy.frustumCulled = false; canopy.visible = false; canopy.castShadow = canopy.receiveShadow = true;
-  trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1 }), 20000);
-  trunks.count = 0; trunks.frustumCulled = false; trunks.castShadow = true; scene.add(canopy, trunks);
-  const resize = () => { const r = host.getBoundingClientRect(); if (!r.width) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); };
-  new ResizeObserver(resize).observe(host); resize();
-  renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
-  glReady = true;
-}
-const LCC = { 1: [0.56, 0.56, 0.56], 2: [0.80, 0.30, 0.25], 5: [0.55, 0.76, 0.40], 6: [0.85, 0.73, 0.54], 7: [0.25, 0.50, 0.78] };
-const PROV = [[0.42, 0.45, 0.48], [0.18, 0.55, 0.85], [0.95, 0.62, 0.22], [0.20, 0.38, 0.62]];
-const lerp3 = (stops, t) => { t = Math.min(Math.max(t, 0), 1) * (stops.length - 1); const i = Math.min(Math.floor(t), stops.length - 2), f = t - i; return [0, 1, 2].map(k => stops[i][k] * (1 - f) + stops[i + 1][k] * f); };
-const H2 = [[0.16, 0.18, 0.22], [0.24, 0.31, 0.48], [0.36, 0.50, 0.75], [0.83, 0.42, 0.55], [0.95, 0.60, 0.33], [1, 0.95, 0.72]];
-const G2 = [[0.55, 0.53, 0.50], [0.70, 0.84, 0.56], [0.33, 0.62, 0.32], [0.10, 0.36, 0.20]];
-/* Trees: crown shape from the canopy raster, a rounded underside down to at most 25% of tree height
-   (SOLWEIG's trunk zone), and a trunk under each crown's highest point. Display only. */
-function placeTrees(t, top) {
-  trunks.count = 0; canopy.visible = false;
-  if (surf !== "trees") return;
-  const src = (treeSrc === "lidar" && t.cdsmLidar) ? t.cdsmLidar : t.cdsm, sc = t.meta.cdsm_scale, NN = N * N;
-  const tree = new Uint8Array(NN), d = new Float32Array(NN);
-  for (let k = 0; k < NN; k++) { const cz = src[k] * sc; tree[k] = cz > 2 && t.lc[k] !== 2 && t.lc[k] !== 7 && t.dem[k] + cz > top[k] + 0.5 ? 1 : 0; d[k] = tree[k] ? 1e9 : 0; }
-  const D2 = Math.SQRT2;
-  for (let j = 1; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k - 1] + 1, d[k - N] + 1, d[k - N - 1] + D2, d[k - N + 1] + D2); }
-  for (let j = N - 2; j >= 0; j--) for (let i = N - 2; i > 0; i--) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k + 1] + 1, d[k + N] + 1, d[k + N + 1] + D2, d[k + N - 1] + D2); }
-  const comp = new Int32Array(NN).fill(-1), crownR = [], stack = [];
-  for (let k0 = 0; k0 < NN; k0++) {
-    if (!tree[k0] || comp[k0] >= 0) continue;
-    const id = crownR.length; let rmax = 1; comp[k0] = id; stack.push(k0);
-    while (stack.length) { const k = stack.pop(); if (d[k] > rmax) rmax = d[k]; const i = k % N;
-      for (const nb of [k - N, k + N, i > 0 ? k - 1 : -1, i < N - 1 ? k + 1 : -1]) if (nb >= 0 && nb < NN && tree[nb] && comp[nb] < 0) { comp[nb] = id; stack.push(nb); } }
-    crownR.push(rmax);
-  }
-  const pos = canGeo.attributes.position.array, col = canGeo.attributes.color.array;
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-    const k = j * N + i; if (!tree[k]) continue;
-    const g = t.dem[k], cz = src[k] * sc, topY = (g + cz - t.base) * exag;
-    const R = Math.max(crownR[comp[k]], 1.5), u = Math.min(1, Math.max(0, (d[k] - 1) / Math.max(R - 1, 0.5)));
-    const th = d[k] <= 1 ? 0 : Math.min(0.75 * cz, (0.8 + 1.1 * R) * Math.sqrt(1 - (1 - u) * (1 - u)));
-    const x = i - N / 2, z = j - N / 2, a = k * 3, b = (NN + k) * 3;
-    pos[a] = x; pos[a + 1] = topY; pos[a + 2] = z; pos[b] = x; pos[b + 1] = topY - th * exag; pos[b + 2] = z;
-    const c = lerp3(G2, 0.35 + cz / 30);
-    col[a] = c[0]; col[a + 1] = c[1]; col[a + 2] = c[2]; col[b] = c[0] * 0.55; col[b + 1] = c[1] * 0.55; col[b + 2] = c[2] * 0.55;
-  }
-  const idx = [];
-  for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) {
-    const a = j * N + i, b = a + 1, c = a + N, e = c + 1;
-    if (!(tree[a] && tree[b] && tree[c] && tree[e])) continue;
-    idx.push(a, c, b, b, c, e, NN + a, NN + b, NN + c, NN + b, NN + e, NN + c);
-  }
-  canGeo.setIndex(idx.length ? new THREE.BufferAttribute(new Uint32Array(idx), 1) : null);
-  canGeo.attributes.position.needsUpdate = true; canGeo.attributes.color.needsUpdate = true; canGeo.computeVertexNormals();
-  canopy.visible = idx.length > 0;
-  const RW = 3, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
-  let n = 0;
-  for (let j = RW; j < N - RW && n < 20000; j++) for (let i = RW; i < N - RW; i++) {
-    const k = j * N + i; if (!tree[k] || d[k] < 2) continue;
-    const h = src[k] * sc; if (h < 3) continue;
-    let peak = true, area = 0;
-    for (let dj = -RW; dj <= RW && peak; dj++) for (let di = -RW; di <= RW; di++) {
-      const hv = src[k + dj * N + di] * sc;
-      if (hv > h || (hv === h && (dj < 0 || (dj === 0 && di < 0)))) { peak = false; break; }
-      if (hv > h * 0.6) area++;
+  async function getTile(id) {
+    if (tileCache[id]) return tileCache[id];
+    const meta = (await getJSON(`data/${id}/city.json`)).tile;
+    const [A, Bm, C] = await Promise.all(["a", "b", "c"].map(k => loadPng(`data/${id}/tile_${k}.png`)));
+    const n = N * N, dsm = new Float32Array(n), dem = new Float32Array(n), old = new Float32Array(n);
+    const lc = new Uint8Array(n), prov = new Uint8Array(n), cdsm = new Uint8Array(n);
+    for (let k = 0, q = 0; k < n; k++, q += 4) {
+      dsm[k] = meta.zmin + (A[q] * 256 + A[q + 1]) * meta.zscale; lc[k] = A[q + 2];
+      dem[k] = meta.zmin + (Bm[q] * 256 + Bm[q + 1]) * meta.zscale; prov[k] = Bm[q + 2];
+      old[k] = meta.zmin + (C[q] * 256 + C[q + 1]) * meta.zscale; cdsm[k] = C[q + 2];
     }
-    if (!peak || area < 12) continue;
-    const g = t.dem[k], under = Math.min((pos[(NN + k) * 3 + 1] / exag + t.base) - g, 0.6 * h);
-    const w = Math.min(Math.max(0.3, Math.sqrt(area) / 9), 0.9);
-    m4.compose(v.set(i - N / 2, (g - t.base) * exag, j - N / 2), q, s3.set(w, (under + 0.5) * exag, w));
-    trunks.setMatrixAt(n++, m4);
+    const t = { meta, dsm, dem, old, lc, cdsm, prov, cdsmLidar: null };
+    if (meta.canopy_compare) { try { const D = await loadPng(`data/${id}/tile_d.png`); t.cdsmLidar = new Uint8Array(n); for (let k = 0; k < n; k++) t.cdsmLidar[k] = D[k * 4]; } catch (e) { t.cdsmLidar = null; } }
+    let s = 0; for (let i = 0; i < n; i += 97) s += dem[i]; t.base = s / Math.ceil(n / 97);
+    return (tileCache[id] = t);
   }
-  trunks.count = n; trunks.instanceMatrix.needsUpdate = true;
-}
-function controls3D() {
-  opts($("#cityTabs3"), cityItems, city3, id => { city3 = id; render3D(); });
-  opts($("#surfSeg"), [["dsm", "Buildings"], ["trees", "Buildings + trees"], ["dem", "Ground"]], surf, k => { surf = k; render3D(); });
-  opts($("#colSeg"), [["prov", "Roof source"], ["lc", "Land cover"], ["height", "Height"]], colorBy, k => { colorBy = k; render3D(); });
-  opts($("#methSeg"), [["new", "Current (1 m)"], ["old", "Old (2 m)"]], method, k => { method = k; render3D(); });
-  opts($("#treeSeg"), [["lidar", "Lidar"], ["meta", "Meta"]], treeSrc, k => { treeSrc = k; render3D(); });
-}
+  let renderer, scene, camera, controls, mesh, geo, trunks, canopy, canGeo, sun, hemi, glReady = false;
+  function initGL() {
+    const host = Q("gl");
+    renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setClearColor(0x1b2028, 1);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); host.prepend(renderer.domElement);
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
+    scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x1b2028, 1800, 4200);
+    camera = new THREE.PerspectiveCamera(42, 1, 1, 6000); camera.position.set(820, 700, 980);
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 0.6; controls.target.set(0, 70, 0); controls.maxPolarAngle = Math.PI * 0.49;
+    hemi = new THREE.HemisphereLight(0xdfe8f2, 0x2a2016, 0.9); scene.add(hemi);
+    sun = new THREE.DirectionalLight(0xfff1dc, 1.6); sun.position.set(-500, 900, 300); scene.add(sun, sun.target);
+    sun.shadow.mapSize.set(4096, 4096);
+    Object.assign(sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 6000 });
+    sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6; sun.castShadow = true;
+    geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = (j * N + i) * 3; pos[k] = i - N / 2; pos[k + 2] = j - N / 2; }
+    const idx = new Uint32Array((N - 1) * (N - 1) * 6); let q = 0;
+    for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) { const a = j * N + i, b = a + 1, c = a + N, d = c + 1; idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d; }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
+    canGeo = new THREE.BufferGeometry();
+    canGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
+    canGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
+    canopy = new THREE.Mesh(canGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide })); canopy.frustumCulled = false; canopy.visible = false; canopy.castShadow = canopy.receiveShadow = true;
+    trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1 }), 20000);
+    trunks.count = 0; trunks.frustumCulled = false; trunks.castShadow = true; scene.add(canopy, trunks);
+    const resize = () => { const r = host.getBoundingClientRect(); if (!r.width) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); };
+    new ResizeObserver(resize).observe(host); resize();
+    const loop = () => { controls.update(); renderer.render(scene, camera); };
+    new IntersectionObserver(es => renderer.setAnimationLoop(es[0].isIntersecting ? loop : null), { root: deck }).observe(host);
+    glReady = true;
+  }
+  const LCC = { 1: [0.56, 0.56, 0.56], 2: [0.80, 0.30, 0.25], 5: [0.55, 0.76, 0.40], 6: [0.85, 0.73, 0.54], 7: [0.25, 0.50, 0.78] };
+  const PROV = [[0.42, 0.45, 0.48], [0.18, 0.55, 0.85], [0.95, 0.62, 0.22], [0.20, 0.38, 0.62]];
+  const lerp3 = (stops, t) => { t = Math.min(Math.max(t, 0), 1) * (stops.length - 1); const i = Math.min(Math.floor(t), stops.length - 2), f = t - i; return [0, 1, 2].map(k => stops[i][k] * (1 - f) + stops[i + 1][k] * f); };
+  const H2 = [[0.16, 0.18, 0.22], [0.24, 0.31, 0.48], [0.36, 0.50, 0.75], [0.83, 0.42, 0.55], [0.95, 0.60, 0.33], [1, 0.95, 0.72]];
+  const G2 = [[0.55, 0.53, 0.50], [0.70, 0.84, 0.56], [0.33, 0.62, 0.32], [0.10, 0.36, 0.20]];
+  /* Trees: crown shape from the canopy raster, a rounded underside down to at most 25% of tree height
+     (SOLWEIG's trunk zone), and a trunk under each crown's highest point. Display only. */
+  function placeTrees(t, top) {
+    trunks.count = 0; canopy.visible = false;
+    if (surf !== "trees") return;
+    const src = (treeSrc === "lidar" && t.cdsmLidar) ? t.cdsmLidar : t.cdsm, sc = t.meta.cdsm_scale, NN = N * N;
+    const tree = new Uint8Array(NN), d = new Float32Array(NN);
+    for (let k = 0; k < NN; k++) { const cz = src[k] * sc; tree[k] = cz > 2 && t.lc[k] !== 2 && t.lc[k] !== 7 && t.dem[k] + cz > top[k] + 0.5 ? 1 : 0; d[k] = tree[k] ? 1e9 : 0; }
+    const D2 = Math.SQRT2;
+    for (let j = 1; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k - 1] + 1, d[k - N] + 1, d[k - N - 1] + D2, d[k - N + 1] + D2); }
+    for (let j = N - 2; j >= 0; j--) for (let i = N - 2; i > 0; i--) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k + 1] + 1, d[k + N] + 1, d[k + N + 1] + D2, d[k + N - 1] + D2); }
+    const comp = new Int32Array(NN).fill(-1), crownR = [], stack = [];
+    for (let k0 = 0; k0 < NN; k0++) {
+      if (!tree[k0] || comp[k0] >= 0) continue;
+      const id = crownR.length; let rmax = 1; comp[k0] = id; stack.push(k0);
+      while (stack.length) { const k = stack.pop(); if (d[k] > rmax) rmax = d[k]; const i = k % N;
+        for (const nb of [k - N, k + N, i > 0 ? k - 1 : -1, i < N - 1 ? k + 1 : -1]) if (nb >= 0 && nb < NN && tree[nb] && comp[nb] < 0) { comp[nb] = id; stack.push(nb); } }
+      crownR.push(rmax);
+    }
+    const pos = canGeo.attributes.position.array, col = canGeo.attributes.color.array;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const k = j * N + i; if (!tree[k]) continue;
+      const g = t.dem[k], cz = src[k] * sc, topY = (g + cz - t.base) * exag;
+      const R = Math.max(crownR[comp[k]], 1.5), u = Math.min(1, Math.max(0, (d[k] - 1) / Math.max(R - 1, 0.5)));
+      const th = d[k] <= 1 ? 0 : Math.min(0.75 * cz, (0.8 + 1.1 * R) * Math.sqrt(1 - (1 - u) * (1 - u)));
+      const x = i - N / 2, z = j - N / 2, a = k * 3, b = (NN + k) * 3;
+      pos[a] = x; pos[a + 1] = topY; pos[a + 2] = z; pos[b] = x; pos[b + 1] = topY - th * exag; pos[b + 2] = z;
+      const c = lerp3(G2, 0.35 + cz / 30);
+      col[a] = c[0]; col[a + 1] = c[1]; col[a + 2] = c[2]; col[b] = c[0] * 0.55; col[b + 1] = c[1] * 0.55; col[b + 2] = c[2] * 0.55;
+    }
+    const idx = [];
+    for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) {
+      const a = j * N + i, b = a + 1, c = a + N, e = c + 1;
+      if (!(tree[a] && tree[b] && tree[c] && tree[e])) continue;
+      idx.push(a, c, b, b, c, e, NN + a, NN + b, NN + c, NN + b, NN + e, NN + c);
+    }
+    canGeo.setIndex(idx.length ? new THREE.BufferAttribute(new Uint32Array(idx), 1) : null);
+    canGeo.attributes.position.needsUpdate = true; canGeo.attributes.color.needsUpdate = true; canGeo.computeVertexNormals();
+    canopy.visible = idx.length > 0;
+    const RW = 3, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
+    let n = 0;
+    for (let j = RW; j < N - RW && n < 20000; j++) for (let i = RW; i < N - RW; i++) {
+      const k = j * N + i; if (!tree[k] || d[k] < 2) continue;
+      const h = src[k] * sc; if (h < 3) continue;
+      let peak = true, area = 0;
+      for (let dj = -RW; dj <= RW && peak; dj++) for (let di = -RW; di <= RW; di++) {
+        const hv = src[k + dj * N + di] * sc;
+        if (hv > h || (hv === h && (dj < 0 || (dj === 0 && di < 0)))) { peak = false; break; }
+        if (hv > h * 0.6) area++;
+      }
+      if (!peak || area < 12) continue;
+      const g = t.dem[k], under = Math.min((pos[(NN + k) * 3 + 1] / exag + t.base) - g, 0.6 * h);
+      const w = Math.min(Math.max(0.3, Math.sqrt(area) / 9), 0.9);
+      m4.compose(v.set(i - N / 2, (g - t.base) * exag, j - N / 2), q, s3.set(w, (under + 0.5) * exag, w));
+      trunks.setMatrixAt(n++, m4);
+    }
+    trunks.count = n; trunks.instanceMatrix.needsUpdate = true;
+  }
+  function controls3D() {
+    opts(Q("cityTabs3"), items, city3, id => { city3 = id; render3D(); });
+    opts(Q("surfSeg"), [["dsm", "Buildings"], ["trees", "Buildings + trees"], ["dem", "Ground"]], surf, k => { surf = k; render3D(); });
+    opts(Q("colSeg"), [["prov", "Roof source"], ["lc", "Land cover"], ["height", "Height"]], colorBy, k => { colorBy = k; render3D(); });
+    opts(Q("methSeg"), [["new", "Current (1 m)"], ["old", "Old (2 m)"]], method, k => { method = k; render3D(); });
+    opts(Q("treeSeg"), [["lidar", "Lidar"], ["meta", "Meta"]], treeSrc, k => { treeSrc = k; render3D(); });
+  }
 
-/* Sun position (solar time, so noon = sun due south): declination from day of year, then elevation and azimuth
-   for the block's latitude. Shadows come from three.js shadow mapping of the 1 m buildings, crowns and trunks. */
-const DATES = [["mar", "Mar 20", 79], ["jun", "Jun 21", 172], ["sep", "Sep 22", 265], ["dec", "Dec 21", 355]];
-let sunDate = "jun", sunOn = false, curLat = 35, playing = null;
-function sunPosition(lat, doy, hour) {
-  const r = Math.PI / 180, dec = 23.44 * Math.sin(2 * Math.PI * (284 + doy) / 365) * r, H = 15 * (hour - 12) * r, phi = lat * r;
-  const sinEl = Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H);
-  const el = Math.asin(sinEl);
-  const az = Math.atan2(-Math.sin(H) * Math.cos(dec), Math.sin(dec) * Math.cos(phi) - Math.cos(dec) * Math.sin(phi) * Math.cos(H));
-  return { el: el / r, az: ((az / r) + 360) % 360 };
-}
-function updateSun() {
-  if (!glReady) return;
-  const hour = +$("#sunT").value;
-  $("#sunTv").textContent = `${String(Math.floor(hour)).padStart(2, "0")}:${String(Math.round((hour % 1) * 60)).padStart(2, "0")}`;
-  if (!sunOn) {
-    sun.position.set(-500, 900, 300); sun.target.position.set(0, 0, 0); sun.intensity = 1.6; hemi.intensity = 0.9;
-    $("#sunInfo").textContent = ""; renderer.shadowMap.needsUpdate = true; return;
+  /* Sun position (solar time, so noon = sun due south): declination from day of year, then elevation and azimuth
+     for the block's latitude. Shadows come from three.js shadow mapping of the 1 m buildings, crowns and trunks. */
+  const DATES = [["mar", "Mar 20", 79], ["jun", "Jun 21", 172], ["sep", "Sep 22", 265], ["dec", "Dec 21", 355]];
+  let sunDate = "jun", sunOn = false, curLat = 35, playing = null;
+  function sunPosition(lat, doy, hour) {
+    const r = Math.PI / 180, dec = 23.44 * Math.sin(2 * Math.PI * (284 + doy) / 365) * r, H = 15 * (hour - 12) * r, phi = lat * r;
+    const sinEl = Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H);
+    const el = Math.asin(sinEl);
+    const az = Math.atan2(-Math.sin(H) * Math.cos(dec), Math.sin(dec) * Math.cos(phi) - Math.cos(dec) * Math.sin(phi) * Math.cos(H));
+    return { el: el / r, az: ((az / r) + 360) % 360 };
   }
-  const doy = DATES.find(d => d[0] === sunDate)[2];
-  const { el, az } = sunPosition(curLat, doy, hour), r = Math.PI / 180, D = 2500;
-  const e = Math.max(el, 0.5) * r;
-  sun.position.set(Math.sin(az * r) * Math.cos(e) * D, Math.sin(e) * D, -Math.cos(az * r) * Math.cos(e) * D);
-  sun.target.position.set(0, 0, 0);
-  const up = el > 0;
-  sun.intensity = up ? 0.6 + 1.4 * Math.min(1, el / 25) : 0; hemi.intensity = up ? 0.28 : 0.1;
-  $("#sunInfo").textContent = up ? `Latitude ${curLat.toFixed(2)}°: sun elevation ${el.toFixed(1)}°, azimuth ${az.toFixed(0)}° (from north)` : `Sun below the horizon (elevation ${el.toFixed(1)}°)`;
-  renderer.shadowMap.needsUpdate = true;
-}
-function sunControls() {
-  opts($("#dateSeg"), DATES.map(d => [d[0], d[1]]), sunDate, k => { sunDate = k; sunControls(); updateSun(); });
-}
-sunControls();
-$("#sunOn").onchange = e => { sunOn = e.target.checked; if (sunOn && controls) { controls.autoRotate = false; $("#spin").checked = false; } updateSun(); };
-$("#sunT").oninput = () => { if (!sunOn) { sunOn = true; $("#sunOn").checked = true; if (controls) { controls.autoRotate = false; $("#spin").checked = false; } } updateSun(); };
-$("#sunPlay").onclick = () => {
-  const b = $("#sunPlay");
-  if (playing) { clearInterval(playing); playing = null; b.textContent = "Play day"; b.setAttribute("aria-pressed", "false"); return; }
-  if (!sunOn) { sunOn = true; $("#sunOn").checked = true; }
-  if (controls) { controls.autoRotate = false; $("#spin").checked = false; }
-  b.textContent = "Pause"; b.setAttribute("aria-pressed", "true");
-  playing = setInterval(() => { const t = $("#sunT"); let v = +t.value + 0.1; if (v > +t.max) v = +t.min; t.value = v; updateSun(); }, 80);
-};
-let token3 = 0;
-async function render3D() {
+  function updateSun() {
+    if (!glReady) return;
+    const hour = +Q("sunT").value;
+    Q("sunTv").textContent = `${String(Math.floor(hour)).padStart(2, "0")}:${String(Math.round((hour % 1) * 60)).padStart(2, "0")}`;
+    if (!sunOn) {
+      sun.position.set(-500, 900, 300); sun.target.position.set(0, 0, 0); sun.intensity = 1.6; hemi.intensity = 0.9;
+      Q("sunInfo").textContent = ""; renderer.shadowMap.needsUpdate = true; return;
+    }
+    const doy = DATES.find(d => d[0] === sunDate)[2];
+    const { el, az } = sunPosition(curLat, doy, hour), r = Math.PI / 180, D = 2500;
+    const e = Math.max(el, 0.5) * r;
+    sun.position.set(Math.sin(az * r) * Math.cos(e) * D, Math.sin(e) * D, -Math.cos(az * r) * Math.cos(e) * D);
+    sun.target.position.set(0, 0, 0);
+    const up = el > 0;
+    sun.intensity = up ? 0.6 + 1.4 * Math.min(1, el / 25) : 0; hemi.intensity = up ? 0.28 : 0.1;
+    Q("sunInfo").textContent = up ? `Latitude ${curLat.toFixed(2)}°: sun elevation ${el.toFixed(1)}°, azimuth ${az.toFixed(0)}° (from north)` : `Sun below the horizon (elevation ${el.toFixed(1)}°)`;
+    renderer.shadowMap.needsUpdate = true;
+  }
+  function sunControls() {
+    opts(Q("dateSeg"), DATES.map(d => [d[0], d[1]]), sunDate, k => { sunDate = k; sunControls(); updateSun(); });
+  }
+  sunControls();
+  Q("sunOn").onchange = e => { sunOn = e.target.checked; if (sunOn && controls) { controls.autoRotate = false; Q("spin").checked = false; } updateSun(); };
+  Q("sunT").oninput = () => { if (!sunOn) { sunOn = true; Q("sunOn").checked = true; if (controls) { controls.autoRotate = false; Q("spin").checked = false; } } updateSun(); };
+  Q("sunPlay").onclick = () => {
+    const b = Q("sunPlay");
+    if (playing) { clearInterval(playing); playing = null; b.textContent = "Play day"; b.setAttribute("aria-pressed", "false"); return; }
+    if (!sunOn) { sunOn = true; Q("sunOn").checked = true; }
+    if (controls) { controls.autoRotate = false; Q("spin").checked = false; }
+    b.textContent = "Pause"; b.setAttribute("aria-pressed", "true");
+    playing = setInterval(() => { const t = Q("sunT"); let v = +t.value + 0.1; if (v > +t.max) v = +t.min; t.value = v; updateSun(); }, 80);
+  };
+  let token3 = 0;
+  async function render3D() {
+    controls3D();
+    if (!glReady) initGL();
+    const token = ++token3;
+    Q("glmsg").hidden = false; Q("glmsg").textContent = `Loading ${byId[city3].name}…`;
+    let t;
+    try { t = await getTile(city3); } catch (e) { if (token === token3) Q("glmsg").textContent = `Could not load ${byId[city3].name}.`; return; }
+    if (token !== token3) return;
+    Q("glmsg").hidden = true;
+    const pos = geo.attributes.position.array, col = geo.attributes.color.array;
+    const top = method === "old" ? t.old : t.dsm;
+    let hmax = 1; for (let i = 0; i < t.dsm.length; i += 13) hmax = Math.max(hmax, t.dsm[i] - t.dem[i]);
+    for (let k = 0; k < N * N; k++) {
+      const g = t.dem[k];
+      const h = surf === "dem" ? g : top[k];
+      pos[k * 3 + 1] = (h - t.base) * exag;
+      let c;
+      if (colorBy === "lc") c = LCC[t.lc[k]] || [0.5, 0.5, 0.5];
+      else if (colorBy === "prov") { const p = t.prov[k]; c = method === "old" && p === 1 && t.old[k] !== t.dsm[k] ? PROV[2] : PROV[p]; }
+      else c = lerp3(H2, Math.log1p(Math.max(0, h - g)) / Math.log1p(hmax));
+      col[k * 3] = c[0]; col[k * 3 + 1] = c[1]; col[k * 3 + 2] = c[2];
+    }
+    geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; geo.computeVertexNormals(); geo.computeBoundingSphere();
+    placeTrees(t, top);
+    const leg = colorBy === "prov" ? [["Roof with lidar return", PROV[1]], ["Roof filled or estimated", PROV[2]], ["Ground", PROV[0]], ["Water", PROV[3]]]
+      : colorBy === "lc" ? [["Paved", LCC[1]], ["Building", LCC[2]], ["Grass", LCC[5]], ["Bare soil", LCC[6]], ["Water", LCC[7]]]
+      : [["Low", H2[1]], ["Mid", H2[3]], [`${Math.round(hmax)} m`, H2[5]]];
+    Q("colLegend").innerHTML = leg.map(([n, c]) => `<div class="r" style="grid-template-columns:14px 1fr"><span class="sw" style="background:rgb(${c.map(v => Math.round(v * 255)).join(",")})"></span><span>${n}</span></div>`).join("");
+    Q("methNote").textContent = method === "old" ? "Old: same lidar thinned to ~2 m, gaps filled with 3×3 maximum and building mean." : "Current: ~1 m lidar, gaps filled from the nearest roof point.";
+    Q("compare").textContent = `Roof pixels with lidar in this block: ${t.meta.roof_measured_pct}%. Tallest: ${t.meta.landmark}, ${Math.round(t.meta.max_height_m)} m.`;
+    const cc = t.meta.canopy_compare;
+    Q("treeSeg").querySelectorAll("button")[0].disabled = !t.cdsmLidar;
+    Q("treeStats").textContent = cc && t.cdsmLidar ? `Tree area > 2 m: Meta ${fmt(cc.meta_tree_m2)} m², lidar ${fmt(cc.lidar_tree_m2)} m². Meta ${Math.abs(cc.bias_where_both_m).toFixed(1)} m lower where both have a tree.` : "";
+    Q("glcap").textContent = `${byId[city3].name}, 1 × 1 km`;
+    curLat = t.meta.center[0]; updateSun();
+  }
+  Q("exag").oninput = e => { exag = +e.target.value; Q("exagv").textContent = exag + "×"; render3D(); };
+  Q("spin").onchange = e => { if (controls) controls.autoRotate = e.target.checked; };
   controls3D();
-  if (!glReady) initGL();
-  const token = ++token3;
-  $("#glmsg").hidden = false; $("#glmsg").textContent = `Loading ${byId[city3].name}…`;
-  let t;
-  try { t = await getTile(city3); } catch (e) { if (token === token3) $("#glmsg").textContent = `Could not load ${byId[city3].name}.`; return; }
-  if (token !== token3) return;
-  $("#glmsg").hidden = true;
-  const pos = geo.attributes.position.array, col = geo.attributes.color.array;
-  const top = method === "old" ? t.old : t.dsm;
-  let hmax = 1; for (let i = 0; i < t.dsm.length; i += 13) hmax = Math.max(hmax, t.dsm[i] - t.dem[i]);
-  for (let k = 0; k < N * N; k++) {
-    const g = t.dem[k];
-    const h = surf === "dem" ? g : top[k];
-    pos[k * 3 + 1] = (h - t.base) * exag;
-    let c;
-    if (colorBy === "lc") c = LCC[t.lc[k]] || [0.5, 0.5, 0.5];
-    else if (colorBy === "prov") { const p = t.prov[k]; c = method === "old" && p === 1 && t.old[k] !== t.dsm[k] ? PROV[2] : PROV[p]; }
-    else c = lerp3(H2, Math.log1p(Math.max(0, h - g)) / Math.log1p(hmax));
-    col[k * 3] = c[0]; col[k * 3 + 1] = c[1]; col[k * 3 + 2] = c[2];
-  }
-  geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; geo.computeVertexNormals(); geo.computeBoundingSphere();
-  placeTrees(t, top);
-  const leg = colorBy === "prov" ? [["Roof with lidar return", PROV[1]], ["Roof filled or estimated", PROV[2]], ["Ground", PROV[0]], ["Water", PROV[3]]]
-    : colorBy === "lc" ? [["Paved", LCC[1]], ["Building", LCC[2]], ["Grass", LCC[5]], ["Bare soil", LCC[6]], ["Water", LCC[7]]]
-    : [["Low", H2[1]], ["Mid", H2[3]], [`${Math.round(hmax)} m`, H2[5]]];
-  $("#colLegend").innerHTML = leg.map(([n, c]) => `<div class="r" style="grid-template-columns:14px 1fr"><span class="sw" style="background:rgb(${c.map(v => Math.round(v * 255)).join(",")})"></span><span>${n}</span></div>`).join("");
-  $("#methNote").textContent = method === "old" ? "Old: same lidar thinned to ~2 m, gaps filled with 3×3 maximum and building mean." : "Current: ~1 m lidar, gaps filled from the nearest roof point.";
-  $("#compare").textContent = `Roof pixels with lidar in this block: ${t.meta.roof_measured_pct}%. Tallest: ${t.meta.landmark}, ${Math.round(t.meta.max_height_m)} m.`;
-  const cc = t.meta.canopy_compare;
-  $("#treeSeg").querySelectorAll("button")[0].disabled = !t.cdsmLidar;
-  $("#treeStats").textContent = cc && t.cdsmLidar ? `Tree area > 2 m: Meta ${fmt(cc.meta_tree_m2)} m², lidar ${fmt(cc.lidar_tree_m2)} m². Meta ${Math.abs(cc.bias_where_both_m).toFixed(1)} m lower where both have a tree.` : "";
-  $("#glcap").textContent = `${byId[city3].name}, 1 × 1 km`;
-  curLat = t.meta.center[0]; updateSun();
+  new IntersectionObserver((es, o) => { if (es.some(x => x.isIntersecting)) { o.disconnect(); render3D(); } }, { root: deck, rootMargin: "200px" }).observe(Q("gl"));
 }
-$("#exag").oninput = e => { exag = +e.target.value; $("#exagv").textContent = exag + "×"; render3D(); };
-$("#spin").onchange = e => { if (controls) controls.autoRotate = e.target.checked; };
-controls3D();
-new IntersectionObserver((es, o) => { if (es.some(x => x.isIntersecting)) { o.disconnect(); render3D(); } }, { root: deck, rootMargin: "200px" }).observe($("#gl"));
+viewer3D("", CITIES, "philadelphia");
+viewer3D("n_", NEW_CITIES, "seattle");
 
 /* validation */
 const G = await getJSON("data/global.json");
-const cityColor = { miami: "#1f77b4", dallas: "#ff7f0e", houston: "#2ca02c", los_angeles: "#d62728", nyc: "#9467bd", san_francisco: "#17becf", philadelphia: "#bcbd22", tucson: "#e377c2" };
+const cityColor = { miami: "#1f77b4", dallas: "#ff7f0e", houston: "#2ca02c", los_angeles: "#d62728", nyc: "#9467bd", san_francisco: "#17becf", philadelphia: "#bcbd22", tucson: "#e377c2", seattle: "#1f77b4", denver: "#ff7f0e", boulder: "#2ca02c" };
 const parseErr = r => { const k = Object.keys(r).find(k => k.startsWith("Difference")); if (!k) return null; const m = /([+\-]?\d+(?:\.\d+)?)/.exec(r[k].replace("−", "-")); return m ? +m[1] : null; };
-(function errChart() {
-  const rows = G.validation.map(r => ({ ...r, e: parseErr(r) })).filter(r => r.e !== null);
-  const W = 900, rh = 10, top = 10, H = top + rows.length * rh + 30, x0 = 270, x1 = W - 20;
+function errChart(P, cities) {
+  const ids = new Set(cities.map(c => c.id));
+  const rows = G.validation.filter(r => ids.has(r.city)).map(r => ({ ...r, e: parseErr(r) })).filter(r => r.e !== null);
+  const W = 900, rh = rows.length < 30 ? 18 : 10, top = 10, H = top + rows.length * rh + 30, x0 = 270, x1 = W - 20;
   const sx = v => x0 + (Math.max(-50, Math.min(50, v)) + 50) / 100 * (x1 - x0);
   let s = `<rect x="${sx(-10)}" y="${top - 4}" width="${sx(10) - sx(-10)}" height="${rows.length * rh + 4}" fill="#e8eef7"/>`;
   for (const v of [-50, -25, -10, 0, 10, 25, 50]) s += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${top - 4}" y2="${top + rows.length * rh}" stroke="${v === 0 ? "#888" : "#ddd"}"/><text x="${sx(v)}" y="${top + rows.length * rh + 14}" text-anchor="middle">${v > 0 ? "+" : ""}${v} m</text>`;
   s += `<text x="${(x0 + x1) / 2}" y="${H - 2}" text-anchor="middle">Raster minus published value (shaded: ±10 m)</text>`;
   rows.forEach((r, i) => { const y = top + i * rh + rh / 2;
-    s += `<text x="${x0 - 6}" y="${y + 3.5}" text-anchor="end" style="font-size:9.5px">${byId[r.city].name}: ${r.landmark.replace(/ \(.*\)/, "")}</text><line x1="${sx(0)}" x2="${sx(r.e)}" y1="${y}" y2="${y}" stroke="${cityColor[r.city]}" stroke-width="2"/><circle cx="${sx(r.e)}" cy="${y}" r="3.2" fill="${cityColor[r.city]}"><title>${r.landmark}: ${r.e > 0 ? "+" : ""}${r.e} m</title></circle>`; });
-  const svg = $("#errChart"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = s;
-})();
-(function scatter() {
-  const pts = G.benchmark.filter(r => r.raster_max_m && r.error_vs_best_m).map(r => ({ ...r, ref: +r.raster_max_m - +r.error_vs_best_m, got: +r.raster_max_m }));
-  const W = 900, H = 380, m = { l: 50, r: 14, t: 10, b: 38 }, max = 560;
+    s += `<text x="${x0 - 6}" y="${y + 3.5}" text-anchor="end" style="font-size:${rh < 12 ? 9.5 : 13}px">${byId[r.city].name}: ${r.landmark.replace(/ \(.*\)/, "")}</text><line x1="${sx(0)}" x2="${sx(r.e)}" y1="${y}" y2="${y}" stroke="${cityColor[r.city]}" stroke-width="2"/><circle cx="${sx(r.e)}" cy="${y}" r="3.2" fill="${cityColor[r.city]}"><title>${r.landmark}: ${r.e > 0 ? "+" : ""}${r.e} m</title></circle>`; });
+  const svg = $("#" + P + "errChart"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = s;
+}
+errChart("", CITIES);
+errChart("n_", NEW_CITIES);
+function scatter(P, cities, max) {
+  const ids = new Set(cities.map(c => c.id));
+  const rows = G.benchmark.filter(r => ids.has(r.city));
+  const pts = rows.filter(r => r.raster_max_m && r.error_vs_best_m).map(r => ({ ...r, ref: +r.raster_max_m - +r.error_vs_best_m, got: +r.raster_max_m }));
+  const W = 900, H = 380, m = { l: 50, r: 14, t: 10, b: 38 };
   const sx = v => m.l + v / max * (W - m.l - m.r), sy = v => H - m.b - v / max * (H - m.t - m.b);
   let s = `<polygon points="${sx(0)},${sy(0)} ${sx(max)},${sy(max * 1.1)} ${sx(max)},${sy(max * 0.9)}" fill="#e8eef7"/>`;
-  for (let v = 0; v <= 500; v += 100) s += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${sy(0)}" y2="${sy(max)}" stroke="#eee"/><line x1="${sx(0)}" x2="${sx(max)}" y1="${sy(v)}" y2="${sy(v)}" stroke="#eee"/><text x="${sx(v)}" y="${H - m.b + 14}" text-anchor="middle">${v}</text><text x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`;
+  for (let v = 0; v < max; v += 100) s += `<line x1="${sx(v)}" x2="${sx(v)}" y1="${sy(0)}" y2="${sy(max)}" stroke="#eee"/><line x1="${sx(0)}" x2="${sx(max)}" y1="${sy(v)}" y2="${sy(v)}" stroke="#eee"/><text x="${sx(v)}" y="${H - m.b + 14}" text-anchor="middle">${v}</text><text x="${m.l - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`;
   s += `<line x1="${sx(0)}" y1="${sy(0)}" x2="${sx(max)}" y2="${sy(max)}" stroke="#888" stroke-dasharray="4 4"/><text x="${(W + m.l) / 2}" y="${H - 4}" text-anchor="middle">Published height (m)</text><text x="13" y="${H / 2}" transform="rotate(-90 13 ${H / 2})" text-anchor="middle">DSM highest point (m)</text>`;
   pts.forEach((p, i) => { const ok = p.status === "ok"; s += `<circle cx="${sx(p.ref)}" cy="${sy(p.got)}" r="3.6" fill="${ok ? cityColor[p.city] : "#fff"}" stroke="${cityColor[p.city]}" stroke-width="1.4" data-i="${i}"/>`; });
-  const svg = $("#scatter"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = s;
+  const svg = $("#" + P + "scatter"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = s;
   svg.addEventListener("mousemove", e => { const i = e.target.dataset?.i; if (i === undefined) return hideTip(); const p = pts[i]; showTip(e, `<b>${p.building}</b><br>${byId[p.city].name}<br>Published ${p.ref.toFixed(0)} m, DSM ${p.got.toFixed(0)} m<br>${p.status === "ok" ? "Within tolerance" : p.status === "off" ? "Outside tolerance" : p.status}`); });
   svg.addEventListener("mouseleave", hideTip);
-  const by = {}; for (const p of G.benchmark) { const b = (by[p.city] ??= { ok: 0, off: 0, after: 0 }); if (p.status === "ok") b.ok++; else if (p.status === "off") b.off++; else b.after++; }
-  $("#benchTable").innerHTML = `<thead><tr><th></th>${CITIES.map(c => `<th class="n">${c.name}</th>`).join("")}</tr></thead><tbody><tr><td>Within tolerance</td>${CITIES.map(c => `<td class="n">${by[c.id]?.ok ?? 0}/${(by[c.id]?.ok ?? 0) + (by[c.id]?.off ?? 0)}</td>`).join("")}</tr><tr><td>Built after lidar (excluded)</td>${CITIES.map(c => `<td class="n">${by[c.id]?.after ?? 0}</td>`).join("")}</tr></tbody>`;
-  const leg = el("p", { class: "small" }, CITIES.map(c => `<span style="white-space:nowrap"><span class="sw" style="background:${cityColor[c.id]};width:9px;height:9px;border-radius:50%"></span> ${c.name}</span>`).join(" &nbsp; ") + " &nbsp; (open circle: outside tolerance)");
+  const by = {}; for (const p of rows) { const b = (by[p.city] ??= { ok: 0, off: 0, after: 0 }); if (p.status === "ok") b.ok++; else if (p.status === "off") b.off++; else b.after++; }
+  cities = cities.filter(c => by[c.id]);
+  $("#" + P + "benchTable").innerHTML = `<thead><tr><th></th>${cities.map(c => `<th class="n">${c.name}</th>`).join("")}</tr></thead><tbody><tr><td>Within tolerance</td>${cities.map(c => `<td class="n">${by[c.id]?.ok ?? 0}/${(by[c.id]?.ok ?? 0) + (by[c.id]?.off ?? 0)}</td>`).join("")}</tr><tr><td>Built after lidar (excluded)</td>${cities.map(c => `<td class="n">${by[c.id]?.after ?? 0}</td>`).join("")}</tr></tbody>`;
+  const leg = el("p", { class: "small" }, cities.map(c => `<span style="white-space:nowrap"><span class="sw" style="background:${cityColor[c.id]};width:9px;height:9px;border-radius:50%"></span> ${c.name}</span>`).join(" &nbsp; ") + " &nbsp; (open circle: outside tolerance)");
   svg.after(leg);
-})();
-let valCity = "all", lbList = [], lbI = 0;
-function renderGallery() {
-  opts($("#valTabs"), [["all", "All"], ...cityItems], valCity, k => { valCity = k; renderGallery(); });
-  lbList = G.validation.filter(r => valCity === "all" || r.city === valCity);
-  $("#gallery").replaceChildren(...lbList.map((r, i) => { const e = parseErr(r);
+}
+scatter("", CITIES, 560);
+scatter("n_", NEW_CITIES, 320);
+let lbList = [], lbI = 0;
+function gallery(P, cities) {
+  let valCity = "all", list = [];
+  const renderGallery = () => {
+  opts($("#" + P + "valTabs"), [["all", "All"], ...cities.map(c => [c.id, c.name])], valCity, k => { valCity = k; renderGallery(); });
+  list = G.validation.filter(r => cities.some(c => c.id === r.city) && (valCity === "all" || r.city === valCity));
+  $("#" + P + "gallery").replaceChildren(...list.map((r, i) => { const e = parseErr(r);
     const b = el("button", { class: "vcard", "aria-label": `Open validation sheet for ${r.landmark}` }, `<img src="${r.img}" alt="" loading="lazy"><span>${r.landmark}${e !== null ? ` (${e > 0 ? "+" : ""}${e} m)` : ""}</span>`);
-    b.onclick = () => openLB(i); return b; }));
+    b.onclick = () => { lbList = list; openLB(i); }; return b; }));
+  };
+  renderGallery();
 }
 function openLB(i) { lbI = (i + lbList.length) % lbList.length; $("#lbimg").src = lbList[lbI].img; $("#lbimg").alt = "Validation sheet: " + lbList[lbI].landmark; $("#lightbox").hidden = false; $("#lbclose").focus(); }
 $("#lbclose").onclick = () => { $("#lightbox").hidden = true; };
 $("#lbprev").onclick = () => openLB(lbI - 1); $("#lbnext").onclick = () => openLB(lbI + 1);
 $("#lightbox").onclick = e => { if (e.target.id === "lightbox") $("#lightbox").hidden = true; };
 addEventListener("keydown", e => { if ($("#lightbox").hidden) return; if (e.key === "Escape") $("#lightbox").hidden = true; if (e.key === "ArrowRight") openLB(lbI + 1); if (e.key === "ArrowLeft") openLB(lbI - 1); });
-renderGallery();
+gallery("", CITIES);
+gallery("n_", NEW_CITIES);
 
 /* canopy table */
-Promise.all(CITIES.map(c => getJSON(`data/${c.id}/city.json`))).then(infos => {
-  $("#canopyTable").innerHTML = `<thead><tr><th>1 km block</th><th class="n">Meta tree area (m²)</th><th class="n">Lidar tree area (m²)</th><th class="n">Meta mean height</th><th class="n">Lidar mean height</th><th class="n">Meta − lidar, same trees</th></tr></thead><tbody>${infos.map((d, i) => { const cc = d.tile.canopy_compare; return cc ? `<tr><td>${CITIES[i].name}</td><td class="n">${fmt(cc.meta_tree_m2)}</td><td class="n">${fmt(cc.lidar_tree_m2)}</td><td class="n">${cc.meta_mean_h} m</td><td class="n">${cc.lidar_mean_h} m</td><td class="n">${cc.bias_where_both_m.toFixed(1)} m</td></tr>` : ""; }).join("")}</tbody>`;
+const canopyTable = (P, cities) => Promise.all(cities.map(c => getJSON(`data/${c.id}/city.json`))).then(infos => {
+  $("#" + P + "canopyTable").innerHTML = `<thead><tr><th>1 km block</th><th class="n">Meta tree area (m²)</th><th class="n">Lidar tree area (m²)</th><th class="n">Meta mean height</th><th class="n">Lidar mean height</th><th class="n">Meta − lidar, same trees</th></tr></thead><tbody>${infos.map((d, i) => { const cc = d.tile.canopy_compare; return cc ? `<tr><td>${cities[i].name}</td><td class="n">${fmt(cc.meta_tree_m2)}</td><td class="n">${fmt(cc.lidar_tree_m2)}</td><td class="n">${cc.meta_mean_h} m</td><td class="n">${cc.lidar_mean_h} m</td><td class="n">${cc.bias_where_both_m.toFixed(1)} m</td></tr>` : ""; }).join("")}</tbody>`;
 });
+canopyTable("", CITIES);
+canopyTable("n_", NEW_CITIES);
+$("#n_canopyCity").innerHTML = `<thead><tr><th>City</th><th class="n">Meta tree area (km²)</th><th class="n">Lidar tree area (km²)</th><th class="n">Meta mean height</th><th class="n">Lidar mean height</th></tr></thead><tbody>${NEW_CITIES.map(c => `<tr><td>${c.name}</td><td class="n">${c.canopy.meta[0]}</td><td class="n">${c.canopy.lidar[0]}</td><td class="n">${c.canopy.meta[1]} m</td><td class="n">${c.canopy.lidar[1]} m</td></tr>`).join("")}</tbody>`;
+$("#n_valCount").textContent = G.validation.filter(r => NEW_CITIES.some(c => c.id === r.city)).length;
 </script>
