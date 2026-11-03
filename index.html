@@ -370,7 +370,7 @@ img.fig { width: 100%; border: 1px solid var(--line); }
       <label class="small"><input type="checkbox" id="n_spin" checked> Rotate</label>
     </div>
   </div>
-  <p class="small">1 m data. Drag to rotate, scroll to zoom, right-drag to pan. Seattle and Denver blocks are centred on the tallest building, Boulder on downtown (Pearl Street). Trees: "Lidar" is the new CDSM_lidar, "Meta" the Meta / WRI canopy.</p>
+  <p class="small">1 m data. Drag to rotate, scroll to zoom, right-drag to pan. Seattle and Denver blocks are centred on the tallest building, Boulder on downtown (Pearl Street), and a second Seattle block on the Space Needle and Seattle Center. Trees: "Lidar" is the new CDSM_lidar, "Meta" the Meta / WRI canopy.</p>
 </section>
 
 <section class="slide" data-title="Validation: landmarks (new cities)">
@@ -451,7 +451,9 @@ const NEW_CITIES = [
   { id: "boulder", name: "Boulder", area: 92, epsg: 26913, dims: "11,941 × 16,654", lidar: "USGS CO DRCOG 2020", spacing: "0.79 m", cap: 120, roof: [99.86, 0.14], spikes: 24359,
     canopy: { meta: [35.2, 7.6], lidar: [39.6, 9.4] } },
 ];
-const byId = Object.fromEntries([...CITIES, ...NEW_CITIES].map(c => [c.id, c]));
+// extra 3D block: a second Seattle tile centred on the Space Needle
+const NEW_BLOCKS = [NEW_CITIES[0], { id: "seattle_needle", name: "Seattle (Space Needle)" }, ...NEW_CITIES.slice(1)];
+const byId = Object.fromEntries([...CITIES, ...NEW_BLOCKS].map(c => [c.id, c]));
 const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (html) e.innerHTML = html; return e; };
 const fmt = n => n.toLocaleString("en-US");
@@ -835,7 +837,7 @@ function viewer3D(P, cities, city3) {
   new IntersectionObserver((es, o) => { if (es.some(x => x.isIntersecting)) { o.disconnect(); render3D(); } }, { root: deck, rootMargin: "200px" }).observe(Q("gl"));
 }
 viewer3D("", CITIES, "philadelphia");
-viewer3D("n_", NEW_CITIES, "seattle");
+viewer3D("n_", NEW_BLOCKS, "seattle");
 
 /* validation */
 const G = await getJSON("data/global.json");
