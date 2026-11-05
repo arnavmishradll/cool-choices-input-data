@@ -572,7 +572,7 @@ img.fig { width: 100%; border: 1px solid var(--line); }
       <label class="small"><input type="checkbox" id="t_spin" checked> Rotate</label>
     </div>
   </div>
-  <p class="small">Drag to rotate, scroll to zoom, right-drag to pan. Austin is centred on The Austonian. Waterline, the taller tower in that block, was built after the lidar, so its height comes from Overture. Atlanta has three blocks: Georgia Tech plus the Pencil Building (Bank of America Plaza), 2.2 km wide and shown at 2 m so it loads quickly; Mercedes-Benz Stadium; and Truist Plaza. The stadium and Truist blocks are 1 km at 1 m. Trees: "Lidar" is CDSM_lidar, "Meta" the Meta / WRI canopy.</p>
+  <p class="small">Drag to rotate, scroll to zoom, right-drag to pan. Austin is centred on The Austonian. Waterline, the taller tower in that block, was built after the lidar, so its height comes from Overture. Atlanta has three blocks: Georgia Tech plus the Pencil Building (Bank of America Plaza), 2.2 km wide, so it takes a few seconds to build the first time; Mercedes-Benz Stadium; and Truist Plaza. The stadium and Truist blocks are 1 km wide. All are 1 m data. Trees: "Lidar" is CDSM_lidar, "Meta" the Meta / WRI canopy.</p>
 </section>
 
 <section class="slide" data-title="Validation: landmarks (Austin, Atlanta)">
@@ -880,7 +880,7 @@ function viewer3D(P, cities, city3) {
     return (tileCache[id] = t);
   }
   const MAX_TREES = 60000, GROUND_STEP = 4, CLIFF_M = 1.2;
-  let renderer, scene, camera, controls, ground, groundTex, roofs, trunks, crowns, sun, hemi, glReady = false;
+  let renderer, scene, camera, controls, world, ground, groundTex, roofs, trunks, canopy, sun, hemi, glReady = false;
   function initGL() {
     const host = Q("gl");
     renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setClearColor(0x1b2028, 1);
@@ -897,12 +897,9 @@ function viewer3D(P, cities, city3) {
     sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6; sun.castShadow = true;
     ground = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 })); ground.receiveShadow = true;
     roofs = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0, shadowSide: THREE.DoubleSide })); roofs.castShadow = roofs.receiveShadow = true; roofs.frustumCulled = false;
-    const ball = new THREE.IcosahedronGeometry(1, 3); ball.setAttribute("normal", ball.attributes.position.clone());
-    crowns = new THREE.InstancedMesh(ball, new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0 }), MAX_TREES);
-    crowns.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TREES * 3), 3);
-    crowns.count = 0; crowns.frustumCulled = false; crowns.castShadow = crowns.receiveShadow = true;
+    canopy = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide })); canopy.frustumCulled = false; canopy.visible = false; canopy.castShadow = canopy.receiveShadow = true;
     trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1 }), MAX_TREES);
-    trunks.count = 0; trunks.frustumCulled = false; trunks.castShadow = true; scene.add(ground, roofs, crowns, trunks);
+    trunks.count = 0; trunks.frustumCulled = false; trunks.castShadow = true; world = new THREE.Group(); world.add(ground, roofs, canopy, trunks); world.visible = false; scene.add(world);
     const resize = () => { const r = host.getBoundingClientRect(); if (!r.width) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); };
     new ResizeObserver(resize).observe(host); resize();
     setBlock(1000, 1);
@@ -961,17 +958,15 @@ function viewer3D(P, cities, city3) {
     }
     return { mask, z };
   }
-  function buildRoofs(t, top, colorOf) {
-    // heights and wall normals depend only on the block and roof method, so colour and exaggeration changes reuse them
-    const cache = (t.roofCache ??= {}), { mask, z } = (cache[method] ??= roofHeights(t, top)), base = t.base, W = CELL;
+  function buildRoofs(t, top) {
+    const { mask, z } = roofHeights(t, top), base = t.base, W = CELL;
     let cells = 0, walls = 0;
     const side = [[0, -1], [1, 0], [0, 1], [-1, 0]];
     const wallAt = (i, j, k, s) => { const ni = i + side[s][0], nj = j + side[s][1]; if (ni < 0 || nj < 0 || ni >= N || nj >= N) return 1; const n = nj * N + ni; return !mask[n] ? 1 : z[k] - z[n] > CLIFF_M ? 2 : 0; };
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = j * N + i; if (!mask[k]) continue; cells++; for (let s = 0; s < 4; s++) if (wallAt(i, j, k, s)) walls++; }
-    const nv = (cells + walls) * 4, pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint32Array((cells + walls) * 6);
-    const wn = cache[method].wn ?? new Float32Array(walls * 2), knownNormals = !!cache[method].wn;
-    cache[method].wn = wn;
-    let v = 0, q = 0, wi = 0;
+    const quads = cells + walls, nv = quads * 4, pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint32Array(quads * 6);
+    const qCell = new Int32Array(quads), qWall = new Uint8Array(quads);
+    let v = 0, q = 0, nq = 0;
     // corner (cx, cy) of cell k: mean of the cells touching it that sit on the same roof level
     const corner = (k, cx, cy) => {
       let sum = 0, n = 0;
@@ -981,7 +976,7 @@ function viewer3D(P, cities, city3) {
       }
       return n ? sum / n : z[k];
     };
-    const X = i => (i - N / 2) * W, Y = h => (h - base) * exag;
+    const X = i => (i - N / 2) * W, Y = h => h - base;
     // wall normal from the outline around the cell, not the cell's own edge, so stair steps on diagonal walls shade as one plane
     let wnx = 0, wnz = 0;
     const wallNormal = (i, j, k, s) => {
@@ -991,13 +986,14 @@ function viewer3D(P, cities, city3) {
       const l = Math.hypot(gx, gz), ax = side[s][0], az = side[s][1];
       if (l === 0 || -(gx * ax + gz * az) / l < 0.3) { wnx = ax; wnz = az; } else { wnx = -gx / l; wnz = -gz / l; }
     };
-    const put = (x, y, zz, nx, ny, nz, r, g, b) => { const a = v * 3; pos[a] = x; pos[a + 1] = y; pos[a + 2] = zz; nor[a] = nx; nor[a + 1] = ny; nor[a + 2] = nz; col[a] = r; col[a + 1] = g; col[a + 2] = b; v++; };
+    const put = (x, y, zz, nx, ny, nz) => { const a = v * 3; pos[a] = x; pos[a + 1] = y; pos[a + 2] = zz; nor[a] = nx; nor[a + 1] = ny; nor[a + 2] = nz; v++; };
     const tri = a => { idx[q++] = a; idx[q++] = a + 1; idx[q++] = a + 2; idx[q++] = a; idx[q++] = a + 2; idx[q++] = a + 3; };
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const k = j * N + i; if (!mask[k]) continue;
       const a = corner(k, i, j), b = corner(k, i, j + 1), c = corner(k, i + 1, j + 1), d = corner(k, i + 1, j);
-      const cc = colorOf(k, top[k], t.dem[k]), cr = cc[0], cg = cc[1], cb = cc[2], nx = (a + b - c - d) * exag / (2 * W), nz = (a + d - b - c) * exag / (2 * W), l = 1 / Math.hypot(nx, 1, nz);
-      const a0 = v; put(X(i), Y(a), X(j), nx * l, l, nz * l, cr, cg, cb); put(X(i), Y(b), X(j + 1), nx * l, l, nz * l, cr, cg, cb); put(X(i + 1), Y(c), X(j + 1), nx * l, l, nz * l, cr, cg, cb); put(X(i + 1), Y(d), X(j), nx * l, l, nz * l, cr, cg, cb); tri(a0);
+      const nx = (a + b - c - d) / (2 * W), nz = (a + d - b - c) / (2 * W), l = 1 / Math.hypot(nx, 1, nz);
+      const a0 = v; put(X(i), Y(a), X(j), nx * l, l, nz * l); put(X(i), Y(b), X(j + 1), nx * l, l, nz * l); put(X(i + 1), Y(c), X(j + 1), nx * l, l, nz * l); put(X(i + 1), Y(d), X(j), nx * l, l, nz * l); tri(a0);
+      qCell[nq++] = k;
       for (let s = 0; s < 4; s++) {
         const kind = wallAt(i, j, k, s); if (!kind) continue;
         const h0 = s === 0 ? d : s === 1 ? c : s === 2 ? b : a, h1 = s === 0 ? a : s === 1 ? d : s === 2 ? c : b;
@@ -1005,62 +1001,109 @@ function viewer3D(P, cities, city3) {
         const n = kind === 2 ? (j + side[s][1]) * N + i + side[s][0] : -1;
         // down to the neighbouring roof, or to just under the ground so the coarse ground mesh can't show a gap
         const lo0 = kind === 2 ? h0 - (z[k] - z[n]) : t.dem[k] - 1, lo1 = kind === 2 ? h1 - (z[k] - z[n]) : t.dem[k] - 1;
-        if (!knownNormals) { wallNormal(i, j, k, s); wn[wi] = wnx; wn[wi + 1] = wnz; }
-        const nxw = wn[wi++], nzw = wn[wi++];
+        wallNormal(i, j, k, s);
         const a1 = v;
-        put(X(x0), Y(h0), X(y0), nxw, 0, nzw, cr * 0.8, cg * 0.8, cb * 0.8); put(X(x0), Y(lo0), X(y0), nxw, 0, nzw, cr * 0.55, cg * 0.55, cb * 0.55);
-        put(X(x1), Y(lo1), X(y1), nxw, 0, nzw, cr * 0.55, cg * 0.55, cb * 0.55); put(X(x1), Y(h1), X(y1), nxw, 0, nzw, cr * 0.8, cg * 0.8, cb * 0.8); tri(a1);
+        put(X(x0), Y(h0), X(y0), wnx, 0, wnz); put(X(x0), Y(lo0), X(y0), wnx, 0, wnz);
+        put(X(x1), Y(lo1), X(y1), wnx, 0, wnz); put(X(x1), Y(h1), X(y1), wnx, 0, wnz); tri(a1);
+        qWall[nq] = 1; qCell[nq++] = k;
       }
     }
-    roofs.geometry.dispose();
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.BufferAttribute(nor, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3)); g.setIndex(new THREE.BufferAttribute(idx, 1));
-    roofs.geometry = g;
+    g.userData = { qCell, qWall };
+    return g;
   }
-  /* Trees: the canopy raster is split into crowns around its height peaks. Each crown is drawn as a smooth ellipsoid of the
-     crown's height, area and position, starting no lower than 25% of tree height (SOLWEIG's trunk zone), with a trunk. Display only. */
+  function paintRoofs(g, t, top, colorOf) {
+    const { qCell, qWall } = g.userData, col = g.attributes.color.array;
+    for (let q = 0, a = 0; q < qCell.length; q++, a += 12) {
+      const k = qCell[q], c = colorOf(k, top[k], t.dem[k]), r = c[0], gr = c[1], b = c[2];
+      const hi = qWall[q] ? 0.8 : 1, lo = qWall[q] ? 0.55 : 1;
+      col[a] = r * hi; col[a + 1] = gr * hi; col[a + 2] = b * hi; col[a + 3] = r * lo; col[a + 4] = gr * lo; col[a + 5] = b * lo;
+      col[a + 6] = r * lo; col[a + 7] = gr * lo; col[a + 8] = b * lo; col[a + 9] = r * hi; col[a + 10] = gr * hi; col[a + 11] = b * hi;
+    }
+    g.attributes.color.needsUpdate = true;
+  }
+  /* Trees: crown shape from the canopy raster, softened so it reads as foliage rather than pixels. Height and outline are
+     blurred, outline vertices slide onto the smoothed crown edge, and each crown has a rounded rim and underside reaching
+     down to at most 25% of tree height (SOLWEIG's trunk zone), with a trunk under each high point. Display only. */
+  function blur3(a, passes) {
+    const b = new Float32Array(a.length);
+    for (let p = 0; p < passes; p++) {
+      for (let j = 0; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; b[k] = (a[k - 1] + a[k] + a[k + 1]) / 3; }
+      for (let j = 1; j < N - 1; j++) for (let i = 0; i < N; i++) { const k = j * N + i; a[k] = (b[k - N] + b[k] + b[k + N]) / 3; }
+    }
+    return a;
+  }
   function placeTrees(t, top) {
-    trunks.count = 0; crowns.count = 0; trunks.instanceMatrix.needsUpdate = true; crowns.instanceMatrix.needsUpdate = true;
+    trunks.count = 0; canopy.visible = false; trunks.instanceMatrix.needsUpdate = true;
     if (surf !== "trees") return;
+    const key = treeSrc + method, cached = (t.treeCache ??= {})[key];
+    if (cached) {
+      canopy.geometry.dispose(); canopy.geometry = cached.geometry; canopy.visible = cached.visible;
+      trunks.instanceMatrix.array.set(cached.matrices); trunks.count = cached.count; trunks.instanceMatrix.needsUpdate = true;
+      return;
+    }
     const src = (treeSrc === "lidar" && t.cdsmLidar) ? t.cdsmLidar : t.cdsm, sc = t.meta.cdsm_scale, NN = N * N, W = CELL;
-    const tree = new Uint8Array(NN), cz = new Float32Array(NN), blur = new Float32Array(NN), tmp = new Float32Array(NN);
-    for (let k = 0; k < NN; k++) { const h = src[k] * sc; cz[k] = h; tree[k] = h > 2 && t.lc[k] !== 2 && t.lc[k] !== 7 && t.dem[k] + h > top[k] + 0.5 ? 1 : 0; blur[k] = tree[k] ? h : 0; }
-    // two passes of a small box blur, so a crown's peak isn't split by per-pixel lidar noise
-    for (let pass = 0; pass < 2; pass++) {
-      for (let j = 0; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; tmp[k] = (blur[k - 1] + blur[k] + blur[k + 1]) / 3; }
-      for (let j = 1; j < N - 1; j++) for (let i = 0; i < N; i++) { const k = j * N + i; blur[k] = (tmp[k - N] + tmp[k] + tmp[k + N]) / 3; }
+    const f = new Float32Array(NN), hb = new Float32Array(NN);
+    for (let k = 0; k < NN; k++) { const cz = src[k] * sc, on = cz > 2 && t.lc[k] !== 2 && t.lc[k] !== 7 && t.dem[k] + cz > top[k] + 0.5; f[k] = on ? 1 : 0; hb[k] = on ? cz : 0; }
+    blur3(f, 2); blur3(hb, 2);
+    const tree = new Uint8Array(NN), d = new Float32Array(NN), hz = new Float32Array(NN);
+    for (let k = 0; k < NN; k++) { const on = f[k] > 0.5 && t.lc[k] !== 2 && t.lc[k] !== 7; tree[k] = on ? 1 : 0; d[k] = on ? 1e9 : 0; if (f[k] > 0.01) hz[k] = hb[k] / f[k]; }
+    const D2 = Math.SQRT2;
+    for (let j = 1; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k - 1] + 1, d[k - N] + 1, d[k - N - 1] + D2, d[k - N + 1] + D2); }
+    for (let j = N - 2; j >= 0; j--) for (let i = N - 2; i > 0; i--) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k + 1] + 1, d[k + N] + 1, d[k + N + 1] + D2, d[k + N - 1] + D2); }
+    const comp = new Int32Array(NN).fill(-1), crownR = [], stack = [];
+    for (let k0 = 0; k0 < NN; k0++) {
+      if (!tree[k0] || comp[k0] >= 0) continue;
+      const id = crownR.length; let rmax = 1; comp[k0] = id; stack.push(k0);
+      while (stack.length) { const k = stack.pop(); if (d[k] > rmax) rmax = d[k]; const i = k % N;
+        for (const nb of [k - N, k + N, i > 0 ? k - 1 : -1, i < N - 1 ? k + 1 : -1]) if (nb >= 0 && nb < NN && tree[nb] && comp[nb] < 0) { comp[nb] = id; stack.push(nb); } }
+      crownR.push(rmax);
     }
-    const label = new Int32Array(NN).fill(-1), queue = new Int32Array(NN);
-    let qh = 0, qt = 0, nc = 0;
-    for (let j = 8; j < N - 8; j++) for (let i = 8; i < N - 8; i++) {
-      const k = j * N + i; if (!tree[k]) continue;
-      const b = blur[k]; if (b < 2 || b < blur[k - 1] || b < blur[k + 1] || b < blur[k - N] || b < blur[k + N]) continue;
-      const R = Math.min(8, Math.max(2, Math.round((1.5 + 0.1 * cz[k]) / W)));
-      let peak = true;
-      for (let dj = -R; dj <= R && peak; dj++) for (let di = -R; di <= R; di++) { const q = k + dj * N + di; if (blur[q] > b || (label[q] >= 0 && di * di + dj * dj <= R * R)) { peak = false; break; } }
-      if (peak) { label[k] = nc++; queue[qt++] = k; }
+    // one top and one underside vertex per tree cell, kept compact so large blocks don't need full-grid buffers
+    const vid = new Int32Array(NN).fill(-1); let nv = 0;
+    for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; if (tree[k]) vid[k] = nv++; }
+    const pos = new Float32Array(nv * 6), col = new Float32Array(nv * 6), under = new Float32Array(NN);
+    for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) {
+      const k = j * N + i; if (vid[k] < 0) continue;
+      const a = vid[k] * 3, b = (vid[k] + nv) * 3;
+      const h = hz[k], g = t.dem[k], R = Math.max(crownR[comp[k]] * W, 1.5), u = Math.min(1, Math.max(0, (d[k] * W - 1) / Math.max(R - 1, 0.5)));
+      const dome = Math.sqrt(1 - (1 - u) * (1 - u)), full = Math.min(0.75 * h, 0.8 + 1.1 * R), rim = g + h - 0.2 * full, up = rim + 0.2 * full * dome, low = rim - 0.8 * full * dome;
+      let x = i, z = j;
+      if (f[k] < 0.9) { const gx = (f[k + 1] - f[k - 1]) / 2, gz = (f[k + N] - f[k - N]) / 2, gl = Math.hypot(gx, gz); if (gl > 0.02) { const m = Math.max(-0.8, Math.min(0.8, (f[k] - 0.5) / gl)); x -= gx / gl * m; z -= gz / gl * m; } }
+      x = (x + 0.5 - N / 2) * W; z = (z + 0.5 - N / 2) * W; under[k] = low - g;
+      pos[a] = x; pos[a + 1] = up - t.base; pos[a + 2] = z; pos[b] = x; pos[b + 1] = low - t.base; pos[b + 2] = z;
+      const c = lerp3(G2, 0.35 + h / 30), sh = 0.72 + 0.28 * dome;
+      col[a] = c[0] * sh; col[a + 1] = c[1] * sh; col[a + 2] = c[2] * sh; col[b] = c[0] * 0.55; col[b + 1] = c[1] * 0.55; col[b + 2] = c[2] * 0.55;
     }
-    const grow = () => { while (qh < qt) { const k = queue[qh++], i = k % N; for (const q of [k - N, k + N, i > 0 ? k - 1 : -1, i < N - 1 ? k + 1 : -1]) if (q >= 0 && q < NN && tree[q] && label[q] < 0) { label[q] = label[k]; queue[qt++] = q; } } };
-    grow();
-    for (let k = 0; k < NN; k++) if (tree[k] && label[k] < 0) { label[k] = nc++; queue[qt++] = k; grow(); }
-    const A = new Float32Array(nc), Sx = new Float32Array(nc), Sz = new Float32Array(nc), Hm = new Float32Array(nc);
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = j * N + i, c = label[k]; if (c < 0) continue; A[c]++; Sx[c] += i; Sz[c] += j; if (cz[k] > Hm[c]) Hm[c] = cz[k]; }
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), yaw = new THREE.Euler(), v = new THREE.Vector3(), s3 = new THREE.Vector3(), colr = new THREE.Color();
+    const idx = [], tri = (p, q, r) => { idx.push(p, q, r, nv + p, nv + r, nv + q); };
+    for (let j = 1; j < N - 2; j++) for (let i = 1; i < N - 2; i++) {
+      const k = j * N + i, a = vid[k], b = vid[k + 1], c = vid[k + N], e = vid[k + N + 1], n = (a >= 0) + (b >= 0) + (c >= 0) + (e >= 0);
+      if (n === 4) { tri(a, c, b); tri(b, c, e); } else if (n === 3) { if (e < 0) tri(a, c, b); else if (c < 0) tri(a, e, b); else if (b < 0) tri(a, c, e); else tri(b, c, e); }
+    }
+    canopy.geometry.dispose();
+    const cg = new THREE.BufferGeometry();
+    cg.setAttribute("position", new THREE.BufferAttribute(pos, 3)); cg.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    if (idx.length) { cg.setIndex(new THREE.BufferAttribute(new Uint32Array(idx), 1)); cg.computeVertexNormals(); }
+    canopy.geometry = cg; canopy.visible = idx.length > 0;
+    const RW = 3, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
     let n = 0;
-    for (let c = 0; c < nc && n < MAX_TREES; c++) {
-      const area = A[c] * W * W, h = Hm[c]; if (area < 3) continue;
-      const fx = Sx[c] / A[c], fz = Sz[c] / A[c], k = Math.round(fz) * N + Math.round(fx), g = t.dem[k];
-      const r = Math.min(Math.max(1.5, Math.sqrt(area / Math.PI) * 1.2), 0.7 * h + 2, 16);
-      const low = 0.25 * h, ry = Math.min((h - low) / 2, r * 1.15), wob = (c * 2654435761 >>> 0) / 4294967296;
-      yaw.set(0, wob * 6.28, 0); q.setFromEuler(yaw);
-      m4.compose(v.set((fx + 0.5 - N / 2) * W, (g + h - ry - t.base) * exag, (fz + 0.5 - N / 2) * W), q, s3.set(r * (0.94 + wob * 0.12), ry * exag, r * (1.06 - wob * 0.12)));
-      crowns.setMatrixAt(n, m4);
-      const cc = lerp3(G2, 0.35 + h / 30 + (wob - 0.5) * 0.12); crowns.setColorAt(n, colr.setRGB(cc[0], cc[1], cc[2]));
-      const w = Math.min(Math.max(0.3, r / 9), 0.9);
-      m4.compose(v.set((fx + 0.5 - N / 2) * W, (g - t.base) * exag, (fz + 0.5 - N / 2) * W), q.identity(), s3.set(w, (h - 2 * ry + ry * 0.4) * exag, w));
-      trunks.setMatrixAt(n, m4); n++;
+    for (let j = RW; j < N - RW && n < MAX_TREES; j++) for (let i = RW; i < N - RW; i++) {
+      const k = j * N + i; if (!tree[k] || d[k] < 2) continue;
+      const h = hz[k]; if (h < 3) continue;
+      let peak = true, area = 0;
+      for (let dj = -RW; dj <= RW && peak; dj++) for (let di = -RW; di <= RW; di++) {
+        const hv = hz[k + dj * N + di];
+        if (hv > h || (hv === h && (dj < 0 || (dj === 0 && di < 0)))) { peak = false; break; }
+        if (hv > h * 0.6) area++;
+      }
+      if (!peak || area < 12) continue;
+      const g = t.dem[k], w = Math.min(Math.max(0.3, Math.sqrt(area) / 9), 0.9);
+      m4.compose(v.set((i + 0.5 - N / 2) * W, g - t.base, (j + 0.5 - N / 2) * W), q, s3.set(w, Math.min(under[k], 0.6 * h) + 0.5, w));
+      trunks.setMatrixAt(n++, m4);
     }
-    crowns.count = trunks.count = n; crowns.instanceMatrix.needsUpdate = true; crowns.instanceColor.needsUpdate = true; trunks.instanceMatrix.needsUpdate = true;
+    trunks.count = n; trunks.instanceMatrix.needsUpdate = true;
+    t.treeCache[key] = { geometry: cg, visible: canopy.visible, matrices: trunks.instanceMatrix.array.slice(0, n * 16), count: n };
   }
   function controls3D() {
     opts(Q("cityTabs3"), items, city3, id => { city3 = id; render3D(); });
@@ -1122,25 +1165,37 @@ function viewer3D(P, cities, city3) {
     let t;
     try { t = await getTile(city3); } catch (e) { if (token === token3) Q("glmsg").textContent = `Could not load ${byId[city3].name}.`; return; }
     if (token !== token3) return;
-    Q("glmsg").hidden = true;
+    Q("glmsg").textContent = `Building ${byId[city3].name}…`;
+    await new Promise(r => setTimeout(r, 30));
+    if (token !== token3) return;
     setBlock(t.nv, t.cell);
     const top = method === "old" ? t.old : t.dsm;
-    let hmax = 1; for (let i = 0; i < t.dsm.length; i++) hmax = Math.max(hmax, t.dsm[i] - t.dem[i]);
+    let hmax = t.hmax;
+    if (!hmax) { hmax = 1; for (let i = 0; i < t.dsm.length; i++) hmax = Math.max(hmax, t.dsm[i] - t.dem[i]); t.hmax = hmax; }
     const colorOf = (k, h, g) => {
       if (colorBy === "lc") return LCC[t.lc[k]] || [0.5, 0.5, 0.5];
       if (colorBy === "prov") { const p = t.prov[k]; return method === "old" && p === 1 && t.old[k] !== t.dsm[k] ? PROV[2] : PROV[p]; }
       return lerp3(H2, Math.log1p(Math.max(0, h - g)) / Math.log1p(hmax));
     };
-    const tex = groundTex.image.data, gg = ground.geometry, gp = gg.attributes.position.array, { G, GN } = gg.userData;
-    for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) gp[(j * GN + i) * 3 + 1] = (t.dem[Math.min(j * G, N - 1) * N + Math.min(i * G, N - 1)] - t.base) * exag;
+    const tex = groundTex.image.data, gg = ground.geometry;
+    if (gg.userData.tile !== t) {
+      const gp = gg.attributes.position.array, { G, GN } = gg.userData;
+      for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) gp[(j * GN + i) * 3 + 1] = t.dem[Math.min(j * G, N - 1) * N + Math.min(i * G, N - 1)] - t.base;
+      gg.attributes.position.needsUpdate = true; gg.computeVertexNormals(); gg.computeBoundingSphere(); gg.userData.tile = t;
+    }
     for (let k = 0; k < N * N; k++) {
       const c = colorOf(k, surf === "dem" ? t.dem[k] : Math.min(top[k], t.dem[k] + 1), t.dem[k]);
       tex[k * 4] = c[0] * 255; tex[k * 4 + 1] = c[1] * 255; tex[k * 4 + 2] = c[2] * 255; tex[k * 4 + 3] = 255;
     }
-    groundTex.needsUpdate = true; gg.attributes.position.needsUpdate = true; gg.computeVertexNormals(); gg.computeBoundingSphere();
+    groundTex.needsUpdate = true;
     roofs.visible = surf !== "dem";
-    if (roofs.visible) buildRoofs(t, top, colorOf);
+    if (roofs.visible) {
+      const rg = ((t.roofGeo ??= {})[method] ??= buildRoofs(t, top));
+      if (roofs.geometry !== rg) { roofs.geometry.dispose(); roofs.geometry = rg; }
+      paintRoofs(rg, t, top, colorOf);
+    }
     placeTrees(t, top);
+    world.visible = true; Q("glmsg").hidden = true;
     const leg = colorBy === "prov" ? [["Roof with lidar return", PROV[1]], ["Roof filled or estimated", PROV[2]], ["Ground", PROV[0]], ["Water", PROV[3]]]
       : colorBy === "lc" ? [["Paved", LCC[1]], ["Building", LCC[2]], ["Grass", LCC[5]], ["Bare soil", LCC[6]], ["Water", LCC[7]]]
       : [["Low", H2[1]], ["Mid", H2[3]], [`${Math.round(hmax)} m`, H2[5]]];
@@ -1153,8 +1208,7 @@ function viewer3D(P, cities, city3) {
     Q("glcap").textContent = `${byId[city3].name}, ${t.meta.size / 1000} × ${t.meta.size / 1000} km${t.cell > 1 ? `, shown at ${t.cell} m` : ""}`;
     curLat = t.meta.center[0]; updateSun();
   }
-  let exagWait = 0;
-  Q("exag").oninput = e => { exag = +e.target.value; Q("exagv").textContent = exag + "×"; clearTimeout(exagWait); exagWait = setTimeout(render3D, 150); };
+  Q("exag").oninput = e => { exag = +e.target.value; Q("exagv").textContent = exag + "×"; if (world) { world.scale.y = exag; updateSun(); } };
   Q("spin").onchange = e => { if (controls) controls.autoRotate = e.target.checked; };
   controls3D();
   new IntersectionObserver((es, o) => { if (es.some(x => x.isIntersecting)) { o.disconnect(); render3D(); } }, { root: deck, rootMargin: "200px" }).observe(Q("gl"));
