@@ -95,6 +95,7 @@ input[type=range] { width: 100%; }
 .lightbox .bar { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
 .lightbox button { border: 1px solid #999; background: #fff; padding: 4px 12px; cursor: pointer; }
 img.fig { width: 100%; border: 1px solid var(--line); }
+.four { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; font-size: 14px; font-weight: 700; }
 
 @media (max-width: 900px) {
   .two, .explorer, .three { grid-template-columns: minmax(0, 1fr); }
@@ -424,6 +425,208 @@ img.fig { width: 100%; border: 1px solid var(--line); }
   <div class="tw"><table id="n_srcTable"></table></div>
 </section>
 
+<section class="slide" id="part3" data-title="Part 3: Austin, Atlanta" style="justify-content:center">
+  <h1>SOLWEIG input data: Austin and Atlanta</h1>
+  <p class="sub">Same pipeline, plus a fix for roofs hidden under trees</p>
+  <p>Austin, Atlanta</p>
+</section>
+
+<section class="slide" data-title="Deliverables (Austin, Atlanta)">
+  <h2>What I produced</h2>
+  <p>The same five rasters per city as part 2: DEM, DSM, land cover, CDSM (Meta / WRI) and CDSM_lidar. All 13 cities are now done.</p>
+  <div class="tw"><table id="t_gridTable"></table></div>
+  <p class="small">Austin is the largest lidar download so far: 15.9 billion points, about 191 GB. Atlanta was about 3.8 billion points, about 45 GB.</p>
+</section>
+
+<section class="slide" data-title="Sources (Austin, Atlanta)">
+  <h2>Data sources</h2>
+  <div class="tw"><table>
+    <thead><tr><th>Layer</th><th>Source</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>DEM</td><td>USGS 3DEP 1 m DEMs</td><td>TX Central 2017 (Austin); GA Statewide 2018 with GA Central 2019 for gaps (Atlanta).</td></tr>
+      <tr><td>DSM roofs and lidar canopy</td><td>Airborne lidar from USGS Entwine: TX Central 2017, GA Statewide and GA Central 2018</td><td>Read over the whole grid, as in part 2.</td></tr>
+      <tr><td>Building footprints</td><td>Overture Maps; Microsoft ML building footprints</td><td>Microsoft used only where Overture has no building.</td></tr>
+      <tr><td>Land cover</td><td>UrbanWatch 1 m (Atlanta 2017), ESA WorldCover 10 m</td><td>UrbanWatch covers 49% of the Atlanta grid. Austin has no 1 m source, so it is WorldCover with 1 m buildings.</td></tr>
+      <tr><td>Canopy</td><td>Meta / WRI canopy height v2; lidar vegetation returns</td><td>Both delivered.</td></tr>
+      <tr><td>NDVI</td><td>NAIP aerial imagery (red and near-infrared)</td><td>Keeps only living vegetation in the lidar canopy.</td></tr>
+      <tr><td>Checks</td><td>Wikipedia building heights, Wikimedia photos, NAIP photos</td><td>Validation only.</td></tr>
+    </tbody></table></div>
+</section>
+
+<section class="slide" data-title="Processing (Austin, Atlanta)">
+  <h2>Processing: what changed from part 2</h2>
+  <ol>
+    <li><b>Unchanged:</b> whole-grid lidar, lidar canopy, NDVI, Microsoft building patch, flat-footprint fix, QA and validation.</li>
+    <li><b>Tower roofs in Atlanta:</b> the 2018 Georgia lidar puts most tower roof returns in a vegetation class, so vegetation-class returns above 38 m count as roofs.</li>
+    <li><b>New step, Atlanta only:</b> roofs_under_canopy.py re-reads the lidar under every footprint and recovers roofs hidden by trees. The next slides show it.</li>
+  </ol>
+  <p class="small">Code: roofs_under_canopy.py. The rasters from before the fix are kept, so it can be rerun or undone.</p>
+</section>
+
+<section class="slide" data-title="Source maps (Austin, Atlanta)">
+  <h2>Source maps (interactive)</h2>
+  <p class="sub">Which dataset each part of each raster came from. Scroll to zoom, drag to pan, hover a source map to read the dataset.</p>
+  <div class="opts" id="t_cityTabs"></div>
+  <div class="opts"><span class="l">Raster:</span><span id="t_layerSeg1" class="opts"></span><span class="l" style="margin-left:10px">Source:</span><span id="t_layerSeg2" class="opts"></span></div>
+  <div class="explorer">
+    <div class="stage" id="t_stage" tabindex="0" aria-label="Map; scroll to zoom, drag to pan">
+      <div class="inner" id="t_inner"><img id="t_mapimg" alt=""><svg id="t_outline"></svg></div>
+      <div class="zoom"><button id="t_zin" aria-label="Zoom in">+</button><button id="t_zout" aria-label="Zoom out">−</button><button id="t_zreset" aria-label="Reset view">↺</button></div>
+      <div class="readout" id="t_readout">City boundary outlined</div>
+    </div>
+    <div class="side"><b id="t_legendTitle"></b><span class="small" id="t_layerNote"></span><div id="t_legend"></div><span class="small" id="t_facts"></span></div>
+  </div>
+</section>
+
+<section class="slide" data-title="Issues and fixes (Austin, Atlanta)">
+  <h2>Issues found and how I fixed them</h2>
+  <div class="tw"><table id="t_issues"></table></div>
+</section>
+
+<section class="slide" data-title="Roofs (Austin, Atlanta)">
+  <h2>Roofs: lidar coverage</h2>
+  <p>Austin matches the part 2 cities. Atlanta started at 85%, well below every other recent city, so I looked into why.</p>
+  <div class="tw"><table id="t_roofTable"></table></div>
+  <p class="small">The Atlanta figure is after the fix and is approximate: it adds the cells set by the fix to the original lidar roof count.</p>
+</section>
+
+<section class="slide" data-title="Atlanta roofs: the problem">
+  <h2>Atlanta: roofs under the trees</h2>
+  <ul>
+    <li><b>Symptom:</b> only 85% of roof pixels came straight from lidar, and 71,693 footprints looked flat in the lidar.</li>
+    <li><b>Cause:</b> the 2018 survey put returns that reach a roof through trees in the vegetation classes, and the DSM step drops vegetation classes.</li>
+    <li><b>Evidence:</b> of 120 flat footprints sampled, 107 were under 2018 canopy. The rest were bare ground in 2018, so probably built after the flight.</li>
+    <li><b>Old result:</b> roof cells copied a nearby height. Flat footprints got a default height or an Overture height, or became paved.</li>
+  </ul>
+  <h3>The fix</h3>
+  <ul>
+    <li>Per 1 m cell, take the lowest vegetation-class last return 1.5–38 m above the DEM. Under a canopy, that return is the roof.</li>
+    <li><b>Gap-filled roof cells:</b> take that return if it is within 3 m of the filled height.</li>
+    <li><b>Flat footprints:</b> take a roof height if returns cover at least 40% of the footprint at one level (interquartile range up to 2 m) and the footprint is at most 2,000 m².</li>
+    <li><b>Test:</b> on 2.2 million cells with both kinds of return, the median gap to real roof returns is +0.11 m, and 68% agree within 1 m.</li>
+  </ul>
+</section>
+
+<section class="slide" data-title="Atlanta roofs: before and after">
+  <h2>Atlanta: before and after the fix</h2>
+  <p class="sub">300 m windows. Height panels run from 0 m (dark) to 20 m (bright). In the last panel, blue is lower and red is higher, scale ±4 m.</p>
+  <div class="four"><span>2023 photo</span><span>Before</span><span>After</span><span>After minus before</span>
+    <img class="fig" src="data/qa/roof_w1_naip.jpg" alt="Aerial photo of apartments and tree-covered houses"><img class="fig" src="data/qa/roof_w1_before.png" alt="Heights before the fix"><img class="fig" src="data/qa/roof_w1_after.png" alt="Heights after the fix"><img class="fig" src="data/qa/roof_w1_diff.png" alt="Height change: the U-shaped block and many houses are lower">
+    <img class="fig" src="data/qa/roof_w4_naip.jpg" alt="Aerial photo of a residential grid under trees"><img class="fig" src="data/qa/roof_w4_before.png" alt="Heights before the fix"><img class="fig" src="data/qa/roof_w4_after.png" alt="Heights after the fix"><img class="fig" src="data/qa/roof_w4_diff.png" alt="Height change: small red patches where buildings returned"></div>
+  <p class="small">Top: the U-shaped apartment block drops from Overture's 21.1 m to a measured 6.6 m. Bottom: small buildings that had been set to paved come back.</p>
+</section>
+
+<section class="slide" data-title="Atlanta roofs: results">
+  <h2>Atlanta: what changed</h2>
+  <p>21,220 of the 71,693 flat footprints gained a measured roof. Heights are medians for those footprints.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Previous source</th><th class="n">Footprints</th><th class="n">Roof found</th><th class="n">Before</th><th class="n">After</th></tr></thead>
+    <tbody>
+      <tr><td>Overture height</td><td class="n">27,008</td><td class="n">9,012</td><td class="n">6.0 m</td><td class="n">4.5 m</td></tr>
+      <tr><td>Set to paved</td><td class="n">22,485</td><td class="n">7,265</td><td class="n">0.05 m</td><td class="n">3.1 m</td></tr>
+      <tr><td>5.1 m house default</td><td class="n">13,019</td><td class="n">2,645</td><td class="n">5.1 m</td><td class="n">3.9 m</td></tr>
+      <tr><td>Microsoft or other</td><td class="n">9,181</td><td class="n">2,298</td><td class="n">5.0 m</td><td class="n">4.6 m</td></tr>
+    </tbody></table></div>
+  <ul>
+    <li>1.76 million gap-filled roof cells now use a measured return. Another 2.03 million were rejected and kept their filled height.</li>
+    <li>3.69 million DSM cells changed (0.5% of the grid), by 1.84 m on average: 50% moved 1 m or less, 31% dropped more than 1 m, and 19% rose more than 1 m.</li>
+    <li>136,023 cells went from paved to building. Canopy did not change.</li>
+  </ul>
+</section>
+
+<section class="slide" data-title="Atlanta roofs: photo checks">
+  <h2>Atlanta: photo checks</h2>
+  <div class="two">
+    <div><h3>Overture heights can be far off</h3>
+      <div class="two"><img class="fig" src="data/qa/roof_apartments.jpg" alt="Two-storey U-shaped apartment block outlined in yellow"><img class="fig" src="data/qa/roof_house.jpg" alt="Houses under tree canopy with footprints outlined in yellow"></div>
+      <p class="small">Left: 963 m² apartment block, Overture 21.1 m, lidar 6.6 m. Right: 141 m² house, Overture 25.4 m, lidar 4.8 m.</p></div>
+    <div><h3>The first version made false roofs</h3>
+      <div class="two"><img class="fig" src="data/qa/roof_warehouse_old.jpg" alt="2017 photo of a scrub-covered site with a large footprint outlined"><img class="fig" src="data/qa/roof_warehouse_new.jpg" alt="2023 photo of the finished warehouse on that site"></div>
+      <p class="small">A 6,541 m² warehouse built after the flight (2017, then 2023): the "roof" was scrub. A 3,360 m² lot of parked trailers failed the same way. Both led to the 2,000 m² cap and the 40% rule.</p></div>
+  </div>
+</section>
+
+<section class="slide" data-title="3D blocks (Austin, Atlanta)">
+  <h2>Blocks in 3D (interactive)</h2>
+  <div class="opts" id="t_cityTabs3"></div>
+  <div class="three">
+    <div id="t_gl" class="gl"><div class="msg" id="t_glmsg">Loading…</div><div class="cap" id="t_glcap"></div></div>
+    <div class="side">
+      <div class="opts"><span class="l">Surface</span><span id="t_surfSeg" class="opts"></span></div>
+      <div class="opts"><span class="l">Colour</span><span id="t_colSeg" class="opts"></span></div>
+      <div id="t_colLegend" class="legend"></div>
+      <div class="opts"><span class="l">Roofs</span><span id="t_methSeg" class="opts"></span></div>
+      <span class="small" id="t_methNote"></span>
+      <span class="small" id="t_compare"></span>
+      <div class="opts"><span class="l">Trees</span><span id="t_treeSeg" class="opts"></span></div>
+      <span class="small" id="t_treeStats"></span>
+      <div style="border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:6px">
+        <label class="small"><input type="checkbox" id="t_sunOn"> <b>Sun and shadows</b></label>
+        <div class="opts"><span class="l">Date</span><span id="t_dateSeg" class="opts"></span></div>
+        <label class="small" for="t_sunT">Solar time: <span id="t_sunTv">12:00</span></label>
+        <input type="range" id="t_sunT" min="5" max="20" step="0.1" value="12">
+        <div class="opts"><button id="t_sunPlay" aria-pressed="false">Play day</button></div>
+        <span class="small" id="t_sunInfo"></span>
+      </div>
+      <label class="small" for="t_exag">Vertical exaggeration: <span id="t_exagv">1×</span></label><input type="range" id="t_exag" min="1" max="4" step="0.25" value="1">
+      <label class="small"><input type="checkbox" id="t_spin" checked> Rotate</label>
+    </div>
+  </div>
+  <p class="small">Drag to rotate, scroll to zoom, right-drag to pan. Austin is centred on The Austonian. Waterline, the taller tower in that block, was built after the lidar, so its height comes from Overture. Atlanta has three blocks: Georgia Tech plus the Pencil Building (Bank of America Plaza), 2.2 km wide and shown at 2 m so it stays smooth; Mercedes-Benz Stadium; and Truist Plaza. The stadium and Truist blocks are 1 km at 1 m. Trees: "Lidar" is CDSM_lidar, "Meta" the Meta / WRI canopy.</p>
+</section>
+
+<section class="slide" data-title="Validation: landmarks (Austin, Atlanta)">
+  <h2>Validation: <span id="t_valCount"></span> landmarks</h2>
+  <p>Same criteria as before: buildings within 10 m or 10%, and water classified as water and flat. All pass. The largest gaps are 360 Condominiums (+14 m, +9%) and Bank of America Plaza (+12 m, +4%), where the lidar catches part of the spire above the roof.</p>
+  <div class="chart"><svg id="t_errChart"></svg></div>
+</section>
+
+<section class="slide" data-title="Validation: benchmark (Austin, Atlanta)">
+  <h2>Validation: tall buildings</h2>
+  <p>Highest point in the DSM vs published height, for every building on Wikipedia's tallest-buildings lists for Austin and Atlanta that was standing when the lidar was flown. Hover a point for details.</p>
+  <div class="chart"><svg id="t_scatter"></svg></div>
+  <div class="tw"><table id="t_benchTable"></table></div>
+  <p class="small">Left out as built after the flight: Austin's Waterline, The Independent, Fairmont, Block 185, Indeed Tower, Fifth &amp; West and Sixth and Guadalupe; Atlanta's 1072 West Peachtree and The Hue Midtown.</p>
+</section>
+
+<section class="slide" data-title="Validation sheets (Austin, Atlanta)">
+  <h2>Validation sheets</h2>
+  <p class="sub">One sheet per landmark: photo, top-down lidar image, raster, and a cross-section through the highest point. Click to enlarge.</p>
+  <div class="opts" id="t_valTabs"></div>
+  <div class="gallery" id="t_gallery"></div>
+</section>
+
+<section class="slide" data-title="Lidar canopy (Austin, Atlanta)">
+  <h2>Canopy: Meta vs the lidar canopy</h2>
+  <p>Citywide, over the full grid (trees taller than 2 m):</p>
+  <div class="tw"><table id="t_canopyCity"></table></div>
+  <p>On each 3D block:</p>
+  <div class="tw"><table id="t_canopyTable"></table></div>
+  <p class="small">Atlanta's canopy is the heaviest of any city: lidar trees cover about 44% of the grid, which is why so many roofs were hidden.</p>
+</section>
+
+<section class="slide" data-title="Remaining issues (Austin, Atlanta)">
+  <h2>Remaining issues and next steps</h2>
+  <div class="two">
+    <div><h3>Remaining issues</h3><ul>
+      <li>50,473 flat Atlanta footprints keep their old values because their under-canopy returns were too sparse or uneven.</li>
+      <li>The fix has a few small false positives, such as theme-park structures at Six Flags. Trailers under 2,000 m² could pass too.</li>
+      <li>Buildings finished after the lidar (2017 Austin, 2018 Atlanta) use estimated heights, including Austin's tallest towers.</li>
+      <li>Austin land cover is 10 m, and so is the 51% of the Atlanta grid outside UrbanWatch.</li>
+    </ul></div>
+    <div><h3>Next steps</h3><ol>
+      <li>Check the other cities for the same under-canopy problem.</li>
+      <li>Add Austin and Atlanta to the land-cover comparison.</li>
+      <li>Run SOLWEIG with both canopies and compare.</li>
+    </ol></div>
+  </div>
+</section>
+
+<section class="slide" data-title="Appendix: sources (Austin, Atlanta)">
+  <h2>Appendix: sources by city</h2>
+  <div class="tw"><table id="t_srcTable"></table></div>
+</section>
+
 </main>
 
 <div class="tip" id="tip"></div>
@@ -453,7 +656,15 @@ const NEW_CITIES = [
 ];
 // extra 3D block: a second Seattle tile centred on the Space Needle
 const NEW_BLOCKS = [NEW_CITIES[0], { id: "seattle_needle", name: "Seattle (Space Needle)" }, ...NEW_CITIES.slice(1)];
-const byId = Object.fromEntries([...CITIES, ...NEW_BLOCKS].map(c => [c.id, c]));
+const P3_CITIES = [
+  { id: "austin", name: "Austin", area: 1006, epsg: 26914, dims: "40,968 × 50,321", lidar: "USGS TX Central 2017", spacing: "0.79 m", cap: 260, roof: [98.9, 1.1], spikes: 30939,
+    canopy: { meta: [741.1, 7.9], lidar: [622.7, 7.6] } },
+  { id: "atlanta", name: "Atlanta", area: 387, epsg: 26916, dims: "25,561 × 27,888", lidar: "USGS GA Statewide 2018", spacing: "0.64 m", cap: 360, roof: [89.7, 10.3], spikes: 228582,
+    canopy: { meta: [350.7, 17.2], lidar: [311.6, 20.8] } },
+];
+// Atlanta is shown as several blocks; the first spans Georgia Tech and the Pencil Building
+const P3_BLOCKS = [P3_CITIES[0], { id: "atl_gatech", name: "Atlanta (Georgia Tech + Pencil Building)" }, { id: "atl_benz", name: "Atlanta (Mercedes-Benz Stadium)" }, { id: "atl_truist", name: "Atlanta (Truist Plaza)" }];
+const byId = Object.fromEntries([...CITIES, ...NEW_BLOCKS, ...P3_BLOCKS, P3_CITIES[1]].map(c => [c.id, c]));
 const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (html) e.innerHTML = html; return e; };
 const fmt = n => n.toLocaleString("en-US");
@@ -486,12 +697,16 @@ addEventListener("keydown", e => {
 setCount(0);
 // index.html#part2 opens at the first slide of part 2 (Seattle, Denver, Boulder)
 if (location.hash === "#part2") addEventListener("load", () => go(slides.indexOf($("#part2"))));
+if (location.hash === "#part3") addEventListener("load", () => go(slides.indexOf($("#part3"))));
 
 /* tables */
 const gridTable = (id, cities) => { $(id).innerHTML = `<thead><tr><th>City</th><th class="n">Grid (pixels)</th><th class="n">Area (km²)</th><th>EPSG</th><th>Roof lidar</th><th class="n">Height cap</th></tr></thead><tbody>${cities.map(c => `<tr><td>${c.name}</td><td class="n">${c.dims}</td><td class="n">${fmt(c.area)}</td><td>${c.epsg}</td><td>${c.lidar}</td><td class="n">${c.cap} m</td></tr>`).join("")}<tr><td><b>Total</b></td><td></td><td class="n"><b>${fmt(cities.reduce((a, c) => a + c.area, 0))}</b></td><td colspan="3"></td></tr></tbody>`; };
 gridTable("#gridTable", CITIES);
 gridTable("#n_gridTable", NEW_CITIES);
-$("#n_roofTable").innerHTML = `<thead><tr><th>City</th><th>Lidar spacing</th><th class="n">Roof pixels with a lidar return</th><th class="n">Filled from nearest roof point</th><th class="n">Spike pixels removed</th></tr></thead><tbody>${NEW_CITIES.map(c => `<tr><td>${c.name}</td><td>${c.spacing}</td><td class="n">${c.roof[0]}%</td><td class="n">${c.roof[1]}%</td><td class="n">${fmt(c.spikes)}</td></tr>`).join("")}</tbody>`;
+gridTable("#t_gridTable", P3_CITIES);
+const roofTable = (id, cities) => { $(id).innerHTML = `<thead><tr><th>City</th><th>Lidar spacing</th><th class="n">Roof pixels with a lidar return</th><th class="n">Filled from nearest roof point</th><th class="n">Spike pixels removed</th></tr></thead><tbody>${cities.map(c => `<tr><td>${c.name}</td><td>${c.spacing}</td><td class="n">${c.roof[0]}%</td><td class="n">${c.roof[1]}%</td><td class="n">${fmt(c.spikes)}</td></tr>`).join("")}</tbody>`; };
+roofTable("#n_roofTable", NEW_CITIES);
+roofTable("#t_roofTable", P3_CITIES);
 $("#roofTable").innerHTML = `<thead><tr><th>City</th><th>Lidar spacing (rebuild)</th><th class="n">Roof pixels with lidar, first pass</th><th class="n">Rebuild</th></tr></thead><tbody>${CITIES.map(c => `<tr><td>${c.name}</td><td>${c.spacing}</td><td class="n">${c.oldRoof}%</td><td class="n">${c.newRoof}%</td></tr>`).join("")}</tbody>`;
 const ISSUES = [
   ["All", "Raw lidar for four cities was ~870 GB on a slow server", "Streamed cloud-optimised lidar and read only nodes over buildings"],
@@ -530,6 +745,17 @@ const NEW_ISSUES = [
 const issuesTable = (id, rows) => { $(id).innerHTML = `<thead><tr><th>City</th><th>Issue</th><th>Fix / result</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</tbody>`; };
 issuesTable("#issues", ISSUES);
 issuesTable("#n_issues", NEW_ISSUES);
+issuesTable("#t_issues", [
+  ["Austin", "Lidar download fell to 0.3 chunks a second: the main thread was stuck paging 18.5 GB of scratch grids", "Reworked the download so all 16 threads stay busy and memory is no longer the limit"],
+  ["Austin", "No 1 m land cover: no UrbanWatch or C-CAP high-resolution layers", "WorldCover 10 m with 1 m buildings, as for Tucson and Boulder"],
+  ["Austin", "81,877 footprints with no roof in the lidar", "62,039 given a height (Overture, Microsoft, or 4.3 m typical house); 19,838 with nothing standing set to paved"],
+  ["Atlanta", "About 1.7 million empty DEM pixels", "Filled from three GA Central 2019 tiles"],
+  ["Atlanta", "Most tower roof returns are in a vegetation class in the 2018 lidar", "Vegetation-class returns above 38 m count as roofs"],
+  ["Atlanta", "Only 85% of roof pixels had a lidar return, and 68,940 footprints looked flat", "Traced to roofs under canopy; fixed with roofs_under_canopy.py (next slides)"],
+  ["Atlanta", "First version of that fix turned a new warehouse and a trailer lot into buildings", "2,000 m² cap and a 40% coverage rule, rerun from the saved rasters"],
+  ["Atlanta", "Overture heights of 21–25 m on low buildings", "Replaced by measured heights where a roof was found"],
+  ["All", "Microsoft buildings missing from Overture", "Added: 3,855 in Austin, 2,202 in Atlanta"],
+]);
 const SRC = {
   miami: ["USGS 3DEP FL Miami-Dade 2023", "NOAA 2021 Miami-Dade lidar", "UrbanWatch 2017, C-CAP FL 2022, WorldCover"],
   dallas: ["USGS 3DEP TX Pecos–Dallas 2018–19", "USGS TX Pecos–Dallas 2018–19 lidar", "UrbanWatch Dallas 2016, Denton Co. 2020, WorldCover"],
@@ -545,9 +771,14 @@ Object.assign(SRC, {
   denver: ["USGS 3DEP CO DRCOG 2020, South Platte 2013, Eastern Colorado 2018", "USGS CO DRCOG 2020 lidar", "UrbanWatch Denver 2017, WorldCover", "Meta / WRI CHM v2; lidar canopy (DRCOG 2020, NAIP)"],
   boulder: ["USGS 3DEP CO DRCOG 2020, South Platte 2013, Arapaho–Roosevelt NF 2023", "USGS CO DRCOG 2020 lidar", "ESA WorldCover 2021 + 1 m buildings", "Meta / WRI CHM v2; lidar canopy (DRCOG 2020, NAIP)"],
 });
+Object.assign(SRC, {
+  austin: ["USGS 3DEP TX Central 2017", "USGS TX Central 2017 lidar", "ESA WorldCover 2021 + 1 m buildings", "Meta / WRI CHM v2; lidar canopy (TX Central 2017, NAIP)"],
+  atlanta: ["USGS 3DEP GA Statewide 2018, GA Central 2019", "USGS GA Statewide and GA Central 2018 lidar", "UrbanWatch Atlanta 2017, WorldCover", "Meta / WRI CHM v2; lidar canopy (GA 2018, NAIP)"],
+});
 const srcTable = (id, cities) => { $(id).innerHTML = `<thead><tr><th>City</th><th>DEM</th><th>DSM roofs</th><th>Land cover</th><th>Canopy</th></tr></thead><tbody>${cities.map(c => `<tr><td>${c.name}</td><td>${SRC[c.id][0]}</td><td>${SRC[c.id][1]}</td><td>${SRC[c.id][2]}</td><td>${SRC[c.id][3] ?? "Meta / WRI CHM v2"}</td></tr>`).join("")}</tbody>`; };
 srcTable("#srcTable", CITIES);
 srcTable("#n_srcTable", NEW_CITIES);
+srcTable("#t_srcTable", P3_CITIES);
 
 /* source maps */
 const L1 = [["dem", "DEM"], ["dsm", "Building height"], ["landcover", "Land cover"], ["canopy", "Canopy"]];
@@ -616,11 +847,13 @@ function explorer(P, cities, L1, L2, city, layer) {
 }
 explorer("", CITIES, L1, L2, "nyc", "dem_src");
 explorer("n_", NEW_CITIES, [...L1, ["canopy_lidar", "Lidar canopy"]], L2.filter(x => x[0] !== "lidar"), "seattle", "dem_src");
+explorer("t_", P3_CITIES, [...L1, ["canopy_lidar", "Lidar canopy"]], L2.filter(x => x[0] !== "lidar"), "atlanta", "dem_src");
 
 /* 3D */
 function viewer3D(P, cities, city3) {
   const Q = id => document.getElementById(P + id), items = cities.map(c => [c.id, c.name]);
-  const N = 1000;
+  // N: vertices per side of the current block, CELL: metres between vertices (large blocks are thinned)
+  let N = 1000, CELL = 1;
   let surf = "dsm", colorBy = "prov", method = "new", exag = 1, treeSrc = "lidar";
   const tileCache = {};
   async function loadPng(url) {
@@ -634,18 +867,19 @@ function viewer3D(P, cities, city3) {
     if (tileCache[id]) return tileCache[id];
     const meta = (await getJSON(`data/${id}/city.json`)).tile;
     const [A, Bm, C] = await Promise.all(["a", "b", "c"].map(k => loadPng(`data/${id}/tile_${k}.png`)));
-    const n = N * N, dsm = new Float32Array(n), dem = new Float32Array(n), old = new Float32Array(n);
+    const nv = Math.floor(meta.size / (meta.step || 1)), n = nv * nv, dsm = new Float32Array(n), dem = new Float32Array(n), old = new Float32Array(n);
     const lc = new Uint8Array(n), prov = new Uint8Array(n), cdsm = new Uint8Array(n);
     for (let k = 0, q = 0; k < n; k++, q += 4) {
       dsm[k] = meta.zmin + (A[q] * 256 + A[q + 1]) * meta.zscale; lc[k] = A[q + 2];
       dem[k] = meta.zmin + (Bm[q] * 256 + Bm[q + 1]) * meta.zscale; prov[k] = Bm[q + 2];
       old[k] = meta.zmin + (C[q] * 256 + C[q + 1]) * meta.zscale; cdsm[k] = C[q + 2];
     }
-    const t = { meta, dsm, dem, old, lc, cdsm, prov, cdsmLidar: null };
+    const t = { meta, nv, cell: meta.step || 1, dsm, dem, old, lc, cdsm, prov, cdsmLidar: null };
     if (meta.canopy_compare) { try { const D = await loadPng(`data/${id}/tile_d.png`); t.cdsmLidar = new Uint8Array(n); for (let k = 0; k < n; k++) t.cdsmLidar[k] = D[k * 4]; } catch (e) { t.cdsmLidar = null; } }
     let s = 0; for (let i = 0; i < n; i += 97) s += dem[i]; t.base = s / Math.ceil(n / 97);
     return (tileCache[id] = t);
   }
+  const MAX_TRUNKS = 60000;
   let renderer, scene, camera, controls, mesh, geo, trunks, canopy, canGeo, sun, hemi, glReady = false;
   function initGL() {
     const host = Q("gl");
@@ -662,24 +896,39 @@ function viewer3D(P, cities, city3) {
     Object.assign(sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 6000 });
     sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6; sun.castShadow = true;
     geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3);
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = (j * N + i) * 3; pos[k] = i - N / 2; pos[k + 2] = j - N / 2; }
-    const idx = new Uint32Array((N - 1) * (N - 1) * 6); let q = 0;
-    for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) { const a = j * N + i, b = a + 1, c = a + N, d = c + 1; idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d; }
-    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
     mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
     canGeo = new THREE.BufferGeometry();
-    canGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
-    canGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
     canopy = new THREE.Mesh(canGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide })); canopy.frustumCulled = false; canopy.visible = false; canopy.castShadow = canopy.receiveShadow = true;
-    trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1 }), 20000);
+    trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1 }), MAX_TRUNKS);
     trunks.count = 0; trunks.frustumCulled = false; trunks.castShadow = true; scene.add(canopy, trunks);
     const resize = () => { const r = host.getBoundingClientRect(); if (!r.width) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); };
     new ResizeObserver(resize).observe(host); resize();
+    setBlock(1000, 1);
     const loop = () => { controls.update(); renderer.render(scene, camera); };
     new IntersectionObserver(es => renderer.setAnimationLoop(es[0].isIntersecting ? loop : null), { root: deck }).observe(host);
     glReady = true;
   }
+  /* (Re)build the ground grid and scale the camera, fog and shadow box to the block. */
+  function setBlock(nv, cell) {
+    if (geo.attributes.position && nv === N && cell === CELL) return;
+    N = nv; CELL = cell;
+    geo.dispose(); canGeo.dispose(); geo.deleteAttribute("normal"); canGeo.deleteAttribute("normal");
+    const pos = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = (j * N + i) * 3; pos[k] = (i - N / 2) * CELL; pos[k + 2] = (j - N / 2) * CELL; }
+    const idx = new Uint32Array((N - 1) * (N - 1) * 6); let q = 0;
+    for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) { const a = j * N + i, b = a + 1, c = a + N, d = c + 1; idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d; }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    canGeo.setIndex(null);
+    canGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
+    canGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
+    const sc = N * CELL / 1000;
+    scene.fog.near = 1800 * sc; scene.fog.far = 4200 * sc;
+    camera.far = 6000 * sc; camera.updateProjectionMatrix(); controls.maxDistance = 3000 * sc;
+    camera.position.set(820 * sc, 700 * sc, 980 * sc); controls.target.set(0, 70, 0);
+    const box = sun.shadow.camera; box.left = box.bottom = -760 * sc; box.right = box.top = 760 * sc; box.far = 6000 * sc; box.updateProjectionMatrix();
+    sunDist = 2500 * sc; sunRest = sc;
+  }
+  let sunDist = 2500, sunRest = 1;
   const LCC = { 1: [0.56, 0.56, 0.56], 2: [0.80, 0.30, 0.25], 5: [0.55, 0.76, 0.40], 6: [0.85, 0.73, 0.54], 7: [0.25, 0.50, 0.78] };
   const PROV = [[0.42, 0.45, 0.48], [0.18, 0.55, 0.85], [0.95, 0.62, 0.22], [0.20, 0.38, 0.62]];
   const lerp3 = (stops, t) => { t = Math.min(Math.max(t, 0), 1) * (stops.length - 1); const i = Math.min(Math.floor(t), stops.length - 2), f = t - i; return [0, 1, 2].map(k => stops[i][k] * (1 - f) + stops[i + 1][k] * f); };
@@ -690,7 +939,7 @@ function viewer3D(P, cities, city3) {
   function placeTrees(t, top) {
     trunks.count = 0; canopy.visible = false;
     if (surf !== "trees") return;
-    const src = (treeSrc === "lidar" && t.cdsmLidar) ? t.cdsmLidar : t.cdsm, sc = t.meta.cdsm_scale, NN = N * N;
+    const src = (treeSrc === "lidar" && t.cdsmLidar) ? t.cdsmLidar : t.cdsm, sc = t.meta.cdsm_scale, NN = N * N, W = CELL;
     const tree = new Uint8Array(NN), d = new Float32Array(NN);
     for (let k = 0; k < NN; k++) { const cz = src[k] * sc; tree[k] = cz > 2 && t.lc[k] !== 2 && t.lc[k] !== 7 && t.dem[k] + cz > top[k] + 0.5 ? 1 : 0; d[k] = tree[k] ? 1e9 : 0; }
     const D2 = Math.SQRT2;
@@ -708,9 +957,9 @@ function viewer3D(P, cities, city3) {
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const k = j * N + i; if (!tree[k]) continue;
       const g = t.dem[k], cz = src[k] * sc, topY = (g + cz - t.base) * exag;
-      const R = Math.max(crownR[comp[k]], 1.5), u = Math.min(1, Math.max(0, (d[k] - 1) / Math.max(R - 1, 0.5)));
+      const R = Math.max(crownR[comp[k]] * W, 1.5), u = Math.min(1, Math.max(0, (d[k] * W - 1) / Math.max(R - 1, 0.5)));
       const th = d[k] <= 1 ? 0 : Math.min(0.75 * cz, (0.8 + 1.1 * R) * Math.sqrt(1 - (1 - u) * (1 - u)));
-      const x = i - N / 2, z = j - N / 2, a = k * 3, b = (NN + k) * 3;
+      const x = (i - N / 2) * W, z = (j - N / 2) * W, a = k * 3, b = (NN + k) * 3;
       pos[a] = x; pos[a + 1] = topY; pos[a + 2] = z; pos[b] = x; pos[b + 1] = topY - th * exag; pos[b + 2] = z;
       const c = lerp3(G2, 0.35 + cz / 30);
       col[a] = c[0]; col[a + 1] = c[1]; col[a + 2] = c[2]; col[b] = c[0] * 0.55; col[b + 1] = c[1] * 0.55; col[b + 2] = c[2] * 0.55;
@@ -726,7 +975,7 @@ function viewer3D(P, cities, city3) {
     canopy.visible = idx.length > 0;
     const RW = 3, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
     let n = 0;
-    for (let j = RW; j < N - RW && n < 20000; j++) for (let i = RW; i < N - RW; i++) {
+    for (let j = RW; j < N - RW && n < MAX_TRUNKS; j++) for (let i = RW; i < N - RW; i++) {
       const k = j * N + i; if (!tree[k] || d[k] < 2) continue;
       const h = src[k] * sc; if (h < 3) continue;
       let peak = true, area = 0;
@@ -738,7 +987,7 @@ function viewer3D(P, cities, city3) {
       if (!peak || area < 12) continue;
       const g = t.dem[k], under = Math.min((pos[(NN + k) * 3 + 1] / exag + t.base) - g, 0.6 * h);
       const w = Math.min(Math.max(0.3, Math.sqrt(area) / 9), 0.9);
-      m4.compose(v.set(i - N / 2, (g - t.base) * exag, j - N / 2), q, s3.set(w, (under + 0.5) * exag, w));
+      m4.compose(v.set((i - N / 2) * W, (g - t.base) * exag, (j - N / 2) * W), q, s3.set(w, (under + 0.5) * exag, w));
       trunks.setMatrixAt(n++, m4);
     }
     trunks.count = n; trunks.instanceMatrix.needsUpdate = true;
@@ -767,11 +1016,11 @@ function viewer3D(P, cities, city3) {
     const hour = +Q("sunT").value;
     Q("sunTv").textContent = `${String(Math.floor(hour)).padStart(2, "0")}:${String(Math.round((hour % 1) * 60)).padStart(2, "0")}`;
     if (!sunOn) {
-      sun.position.set(-500, 900, 300); sun.target.position.set(0, 0, 0); sun.intensity = 1.6; hemi.intensity = 0.9;
+      sun.position.set(-500 * sunRest, 900 * sunRest, 300 * sunRest); sun.target.position.set(0, 0, 0); sun.intensity = 1.6; hemi.intensity = 0.9;
       Q("sunInfo").textContent = ""; renderer.shadowMap.needsUpdate = true; return;
     }
     const doy = DATES.find(d => d[0] === sunDate)[2];
-    const { el, az } = sunPosition(curLat, doy, hour), r = Math.PI / 180, D = 2500;
+    const { el, az } = sunPosition(curLat, doy, hour), r = Math.PI / 180, D = sunDist;
     const e = Math.max(el, 0.5) * r;
     sun.position.set(Math.sin(az * r) * Math.cos(e) * D, Math.sin(e) * D, -Math.cos(az * r) * Math.cos(e) * D);
     sun.target.position.set(0, 0, 0);
@@ -804,9 +1053,10 @@ function viewer3D(P, cities, city3) {
     try { t = await getTile(city3); } catch (e) { if (token === token3) Q("glmsg").textContent = `Could not load ${byId[city3].name}.`; return; }
     if (token !== token3) return;
     Q("glmsg").hidden = true;
+    setBlock(t.nv, t.cell);
     const pos = geo.attributes.position.array, col = geo.attributes.color.array;
     const top = method === "old" ? t.old : t.dsm;
-    let hmax = 1; for (let i = 0; i < t.dsm.length; i += 13) hmax = Math.max(hmax, t.dsm[i] - t.dem[i]);
+    let hmax = 1; for (let i = 0; i < t.dsm.length; i++) hmax = Math.max(hmax, t.dsm[i] - t.dem[i]);
     for (let k = 0; k < N * N; k++) {
       const g = t.dem[k];
       const h = surf === "dem" ? g : top[k];
@@ -824,11 +1074,11 @@ function viewer3D(P, cities, city3) {
       : [["Low", H2[1]], ["Mid", H2[3]], [`${Math.round(hmax)} m`, H2[5]]];
     Q("colLegend").innerHTML = leg.map(([n, c]) => `<div class="r" style="grid-template-columns:14px 1fr"><span class="sw" style="background:rgb(${c.map(v => Math.round(v * 255)).join(",")})"></span><span>${n}</span></div>`).join("");
     Q("methNote").textContent = method === "old" ? "Old: same lidar thinned to ~2 m, gaps filled with 3×3 maximum and building mean." : "Current: ~1 m lidar, gaps filled from the nearest roof point.";
-    Q("compare").textContent = `Roof pixels with lidar in this block: ${t.meta.roof_measured_pct}%. Tallest: ${t.meta.landmark}, ${Math.round(t.meta.max_height_m)} m.`;
+    Q("compare").textContent = `Roof pixels with lidar in this block: ${t.meta.roof_measured_pct}%. ${t.meta.centred ? `Centred on ${t.meta.landmark}. Highest point in the block` : `Tallest: ${t.meta.landmark},`} ${Math.round(t.meta.max_height_m)} m.`;
     const cc = t.meta.canopy_compare;
     Q("treeSeg").querySelectorAll("button")[0].disabled = !t.cdsmLidar;
     Q("treeStats").textContent = cc && t.cdsmLidar ? `Tree area > 2 m: Meta ${fmt(cc.meta_tree_m2)} m², lidar ${fmt(cc.lidar_tree_m2)} m². Meta ${Math.abs(cc.bias_where_both_m).toFixed(1)} m lower where both have a tree.` : "";
-    Q("glcap").textContent = `${byId[city3].name}, 1 × 1 km`;
+    Q("glcap").textContent = `${byId[city3].name}, ${t.meta.size / 1000} × ${t.meta.size / 1000} km${t.cell > 1 ? `, shown at ${t.cell} m` : ""}`;
     curLat = t.meta.center[0]; updateSun();
   }
   Q("exag").oninput = e => { exag = +e.target.value; Q("exagv").textContent = exag + "×"; render3D(); };
@@ -838,10 +1088,11 @@ function viewer3D(P, cities, city3) {
 }
 viewer3D("", CITIES, "philadelphia");
 viewer3D("n_", NEW_BLOCKS, "seattle");
+viewer3D("t_", P3_BLOCKS, "atl_gatech");
 
 /* validation */
 const G = await getJSON("data/global.json");
-const cityColor = { miami: "#1f77b4", dallas: "#ff7f0e", houston: "#2ca02c", los_angeles: "#d62728", nyc: "#9467bd", san_francisco: "#17becf", philadelphia: "#bcbd22", tucson: "#e377c2", seattle: "#1f77b4", denver: "#ff7f0e", boulder: "#2ca02c" };
+const cityColor = { miami: "#1f77b4", dallas: "#ff7f0e", houston: "#2ca02c", los_angeles: "#d62728", nyc: "#9467bd", san_francisco: "#17becf", philadelphia: "#bcbd22", tucson: "#e377c2", seattle: "#1f77b4", denver: "#ff7f0e", boulder: "#2ca02c", austin: "#1f77b4", atlanta: "#ff7f0e" };
 const parseErr = r => { const k = Object.keys(r).find(k => k.startsWith("Difference")); if (!k) return null; const m = /([+\-]?\d+(?:\.\d+)?)/.exec(r[k].replace("−", "-")); return m ? +m[1] : null; };
 function errChart(P, cities) {
   const ids = new Set(cities.map(c => c.id));
@@ -857,6 +1108,7 @@ function errChart(P, cities) {
 }
 errChart("", CITIES);
 errChart("n_", NEW_CITIES);
+errChart("t_", P3_CITIES);
 function scatter(P, cities, max) {
   const ids = new Set(cities.map(c => c.id));
   const rows = G.benchmark.filter(r => ids.has(r.city));
@@ -878,6 +1130,7 @@ function scatter(P, cities, max) {
 }
 scatter("", CITIES, 560);
 scatter("n_", NEW_CITIES, 320);
+scatter("t_", P3_CITIES, 320);
 let lbList = [], lbI = 0;
 function gallery(P, cities) {
   let valCity = "all", list = [];
@@ -897,13 +1150,19 @@ $("#lightbox").onclick = e => { if (e.target.id === "lightbox") $("#lightbox").h
 addEventListener("keydown", e => { if ($("#lightbox").hidden) return; if (e.key === "Escape") $("#lightbox").hidden = true; if (e.key === "ArrowRight") openLB(lbI + 1); if (e.key === "ArrowLeft") openLB(lbI - 1); });
 gallery("", CITIES);
 gallery("n_", NEW_CITIES);
+gallery("t_", P3_CITIES);
 
 /* canopy table */
 const canopyTable = (P, cities) => Promise.all(cities.map(c => getJSON(`data/${c.id}/city.json`))).then(infos => {
-  $("#" + P + "canopyTable").innerHTML = `<thead><tr><th>1 km block</th><th class="n">Meta tree area (m²)</th><th class="n">Lidar tree area (m²)</th><th class="n">Meta mean height</th><th class="n">Lidar mean height</th><th class="n">Meta − lidar, same trees</th></tr></thead><tbody>${infos.map((d, i) => { const cc = d.tile.canopy_compare; return cc ? `<tr><td>${cities[i].name}</td><td class="n">${fmt(cc.meta_tree_m2)}</td><td class="n">${fmt(cc.lidar_tree_m2)}</td><td class="n">${cc.meta_mean_h} m</td><td class="n">${cc.lidar_mean_h} m</td><td class="n">${cc.bias_where_both_m.toFixed(1)} m</td></tr>` : ""; }).join("")}</tbody>`;
+  $("#" + P + "canopyTable").innerHTML = `<thead><tr><th>Block</th><th class="n">Meta tree area (m²)</th><th class="n">Lidar tree area (m²)</th><th class="n">Meta mean height</th><th class="n">Lidar mean height</th><th class="n">Meta − lidar, same trees</th></tr></thead><tbody>${infos.map((d, i) => { const cc = d.tile.canopy_compare; return cc ? `<tr><td>${cities[i].name}</td><td class="n">${fmt(cc.meta_tree_m2)}</td><td class="n">${fmt(cc.lidar_tree_m2)}</td><td class="n">${cc.meta_mean_h} m</td><td class="n">${cc.lidar_mean_h} m</td><td class="n">${cc.bias_where_both_m.toFixed(1)} m</td></tr>` : ""; }).join("")}</tbody>`;
 });
 canopyTable("", CITIES);
 canopyTable("n_", NEW_CITIES);
-$("#n_canopyCity").innerHTML = `<thead><tr><th>City</th><th class="n">Meta tree area (km²)</th><th class="n">Lidar tree area (km²)</th><th class="n">Meta mean height</th><th class="n">Lidar mean height</th></tr></thead><tbody>${NEW_CITIES.map(c => `<tr><td>${c.name}</td><td class="n">${c.canopy.meta[0]}</td><td class="n">${c.canopy.lidar[0]}</td><td class="n">${c.canopy.meta[1]} m</td><td class="n">${c.canopy.lidar[1]} m</td></tr>`).join("")}</tbody>`;
-$("#n_valCount").textContent = G.validation.filter(r => NEW_CITIES.some(c => c.id === r.city)).length;
+canopyTable("t_", P3_BLOCKS);
+const canopyCity = (id, cities) => { $(id).innerHTML = `<thead><tr><th>City</th><th class="n">Meta tree area (km²)</th><th class="n">Lidar tree area (km²)</th><th class="n">Meta mean height</th><th class="n">Lidar mean height</th></tr></thead><tbody>${cities.map(c => `<tr><td>${c.name}</td><td class="n">${c.canopy.meta[0]}</td><td class="n">${c.canopy.lidar[0]}</td><td class="n">${c.canopy.meta[1]} m</td><td class="n">${c.canopy.lidar[1]} m</td></tr>`).join("")}</tbody>`; };
+canopyCity("#n_canopyCity", NEW_CITIES);
+canopyCity("#t_canopyCity", P3_CITIES);
+const valCount = (id, cities) => { $(id).textContent = G.validation.filter(r => cities.some(c => c.id === r.city)).length; };
+valCount("#n_valCount", NEW_CITIES);
+valCount("#t_valCount", P3_CITIES);
 </script>
