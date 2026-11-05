@@ -572,7 +572,7 @@ img.fig { width: 100%; border: 1px solid var(--line); }
       <label class="small"><input type="checkbox" id="t_spin" checked> Rotate</label>
     </div>
   </div>
-  <p class="small">Drag to rotate, scroll to zoom, right-drag to pan. Austin is centred on The Austonian. Waterline, the taller tower in that block, was built after the lidar, so its height comes from Overture. Atlanta has three blocks: Georgia Tech plus the Pencil Building (Bank of America Plaza), 2.2 km wide and shown at 2 m so it stays smooth; Mercedes-Benz Stadium; and Truist Plaza. The stadium and Truist blocks are 1 km at 1 m. Trees: "Lidar" is CDSM_lidar, "Meta" the Meta / WRI canopy.</p>
+  <p class="small">Drag to rotate, scroll to zoom, right-drag to pan. Austin is centred on The Austonian. Waterline, the taller tower in that block, was built after the lidar, so its height comes from Overture. Atlanta has three blocks: Georgia Tech plus the Pencil Building (Bank of America Plaza), 2.2 km wide and shown at 2 m so it loads quickly; Mercedes-Benz Stadium; and Truist Plaza. The stadium and Truist blocks are 1 km at 1 m. Trees: "Lidar" is CDSM_lidar, "Meta" the Meta / WRI canopy.</p>
 </section>
 
 <section class="slide" data-title="Validation: landmarks (Austin, Atlanta)">
@@ -879,8 +879,8 @@ function viewer3D(P, cities, city3) {
     let s = 0; for (let i = 0; i < n; i += 97) s += dem[i]; t.base = s / Math.ceil(n / 97);
     return (tileCache[id] = t);
   }
-  const MAX_TRUNKS = 60000;
-  let renderer, scene, camera, controls, mesh, geo, trunks, canopy, canGeo, sun, hemi, glReady = false;
+  const MAX_TREES = 60000, GROUND_STEP = 4, CLIFF_M = 1.2;
+  let renderer, scene, camera, controls, ground, groundTex, roofs, trunks, crowns, sun, hemi, glReady = false;
   function initGL() {
     const host = Q("gl");
     renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setClearColor(0x1b2028, 1);
@@ -895,12 +895,14 @@ function viewer3D(P, cities, city3) {
     sun.shadow.mapSize.set(4096, 4096);
     Object.assign(sun.shadow.camera, { left: -760, right: 760, top: 760, bottom: -760, near: 10, far: 6000 });
     sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6; sun.castShadow = true;
-    geo = new THREE.BufferGeometry();
-    mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
-    canGeo = new THREE.BufferGeometry();
-    canopy = new THREE.Mesh(canGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide })); canopy.frustumCulled = false; canopy.visible = false; canopy.castShadow = canopy.receiveShadow = true;
-    trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1 }), MAX_TRUNKS);
-    trunks.count = 0; trunks.frustumCulled = false; trunks.castShadow = true; scene.add(canopy, trunks);
+    ground = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 })); ground.receiveShadow = true;
+    roofs = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0, shadowSide: THREE.DoubleSide })); roofs.castShadow = roofs.receiveShadow = true; roofs.frustumCulled = false;
+    const ball = new THREE.IcosahedronGeometry(1, 3); ball.setAttribute("normal", ball.attributes.position.clone());
+    crowns = new THREE.InstancedMesh(ball, new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0 }), MAX_TREES);
+    crowns.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TREES * 3), 3);
+    crowns.count = 0; crowns.frustumCulled = false; crowns.castShadow = crowns.receiveShadow = true;
+    trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 1 }), MAX_TREES);
+    trunks.count = 0; trunks.frustumCulled = false; trunks.castShadow = true; scene.add(ground, roofs, crowns, trunks);
     const resize = () => { const r = host.getBoundingClientRect(); if (!r.width) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); };
     new ResizeObserver(resize).observe(host); resize();
     setBlock(1000, 1);
@@ -910,17 +912,25 @@ function viewer3D(P, cities, city3) {
   }
   /* (Re)build the ground grid and scale the camera, fog and shadow box to the block. */
   function setBlock(nv, cell) {
-    if (geo.attributes.position && nv === N && cell === CELL) return;
+    if (ground.geometry.attributes.position && nv === N && cell === CELL) return;
     N = nv; CELL = cell;
-    geo.dispose(); canGeo.dispose(); geo.deleteAttribute("normal"); canGeo.deleteAttribute("normal");
-    const pos = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3);
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = (j * N + i) * 3; pos[k] = (i - N / 2) * CELL; pos[k + 2] = (j - N / 2) * CELL; }
-    const idx = new Uint32Array((N - 1) * (N - 1) * 6); let q = 0;
-    for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) { const a = j * N + i, b = a + 1, c = a + N, d = c + 1; idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d; }
-    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.BufferAttribute(col, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
-    canGeo.setIndex(null);
-    canGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
-    canGeo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(2 * N * N * 3), 3));
+    ground.geometry.dispose(); if (groundTex) groundTex.dispose();
+    // the ground is smooth, so a coarse mesh is enough; its detail comes from a 1 pixel per cell texture
+    const G = N > 1500 ? GROUND_STEP * 2 : GROUND_STEP, GN = Math.ceil((N - 1) / G) + 1;
+    const pos = new Float32Array(GN * GN * 3), uv = new Float32Array(GN * GN * 2), idx = new Uint32Array((GN - 1) * (GN - 1) * 6);
+    for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) {
+      const v = j * GN + i, ci = Math.min(i * G, N - 1), cj = Math.min(j * G, N - 1);
+      pos[v * 3] = (ci + 0.5 - N / 2) * CELL; pos[v * 3 + 2] = (cj + 0.5 - N / 2) * CELL;
+      uv[v * 2] = (ci + 0.5) / N; uv[v * 2 + 1] = (cj + 0.5) / N;
+    }
+    let q = 0;
+    for (let j = 0; j < GN - 1; j++) for (let i = 0; i < GN - 1; i++) { const a = j * GN + i, b = a + 1, c = a + GN, d = c + 1; idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d; }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute("position", new THREE.BufferAttribute(pos, 3)); gg.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); gg.setIndex(new THREE.BufferAttribute(idx, 1));
+    gg.userData = { G, GN }; ground.geometry = gg;
+    groundTex = new THREE.DataTexture(new Uint8Array(N * N * 4), N, N, THREE.RGBAFormat);
+    groundTex.magFilter = THREE.NearestFilter; groundTex.minFilter = THREE.LinearMipmapLinearFilter; groundTex.generateMipmaps = true;
+    groundTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    ground.material.map = groundTex; ground.material.needsUpdate = true;
     const sc = N * CELL / 1000;
     scene.fog.near = 1800 * sc; scene.fog.far = 4200 * sc;
     camera.far = 6000 * sc; camera.updateProjectionMatrix(); controls.maxDistance = 3000 * sc;
@@ -934,63 +944,123 @@ function viewer3D(P, cities, city3) {
   const lerp3 = (stops, t) => { t = Math.min(Math.max(t, 0), 1) * (stops.length - 1); const i = Math.min(Math.floor(t), stops.length - 2), f = t - i; return [0, 1, 2].map(k => stops[i][k] * (1 - f) + stops[i + 1][k] * f); };
   const H2 = [[0.16, 0.18, 0.22], [0.24, 0.31, 0.48], [0.36, 0.50, 0.75], [0.83, 0.42, 0.55], [0.95, 0.60, 0.33], [1, 0.95, 0.72]];
   const G2 = [[0.55, 0.53, 0.50], [0.70, 0.84, 0.56], [0.33, 0.62, 0.32], [0.10, 0.36, 0.20]];
-  /* Trees: crown shape from the canopy raster, a rounded underside down to at most 25% of tree height
-     (SOLWEIG's trunk zone), and a trunk under each crown's highest point. Display only. */
+  /* Buildings: every roof cell is its own quad. Corners are averaged with neighbours on the same roof level, so pitched
+     roofs stay continuous, and height jumps above CLIFF_M become vertical walls. A small median removes lidar speckle
+     from roofs; thin tall features such as spires are left alone. Display only: the rasters are not changed. */
+  function roofHeights(t, top) {
+    const NN = N * N, mask = new Uint8Array(NN), z = new Float32Array(NN), w = new Float32Array(9);
+    for (let k = 0; k < NN; k++) { const h = top[k] - t.dem[k]; mask[k] = h > 1 || (t.lc[k] === 2 && h > 0.3) ? 1 : 0; z[k] = top[k]; }
+    for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) {
+      const k = j * N + i; if (!mask[k]) continue;
+      let n = 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const q = k + dj * N + di; if (mask[q] && Math.abs(top[q] - top[k]) < 3) w[n++] = top[q]; }
+      if (n < 3) { if (n < 2) mask[k] = 0; continue; }
+      for (let a = 1; a < n; a++) { const x = w[a]; let b = a - 1; while (b >= 0 && w[b] > x) { w[b + 1] = w[b]; b--; } w[b + 1] = x; }
+      const m = w[n >> 1];
+      if (Math.abs(m - top[k]) < 2) z[k] = m;
+    }
+    return { mask, z };
+  }
+  function buildRoofs(t, top, colorOf) {
+    // heights and wall normals depend only on the block and roof method, so colour and exaggeration changes reuse them
+    const cache = (t.roofCache ??= {}), { mask, z } = (cache[method] ??= roofHeights(t, top)), base = t.base, W = CELL;
+    let cells = 0, walls = 0;
+    const side = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    const wallAt = (i, j, k, s) => { const ni = i + side[s][0], nj = j + side[s][1]; if (ni < 0 || nj < 0 || ni >= N || nj >= N) return 1; const n = nj * N + ni; return !mask[n] ? 1 : z[k] - z[n] > CLIFF_M ? 2 : 0; };
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = j * N + i; if (!mask[k]) continue; cells++; for (let s = 0; s < 4; s++) if (wallAt(i, j, k, s)) walls++; }
+    const nv = (cells + walls) * 4, pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint32Array((cells + walls) * 6);
+    const wn = cache[method].wn ?? new Float32Array(walls * 2), knownNormals = !!cache[method].wn;
+    cache[method].wn = wn;
+    let v = 0, q = 0, wi = 0;
+    // corner (cx, cy) of cell k: mean of the cells touching it that sit on the same roof level
+    const corner = (k, cx, cy) => {
+      let sum = 0, n = 0;
+      for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 0; di++) {
+        const ci = cx + di, cj = cy + dj; if (ci < 0 || cj < 0 || ci >= N || cj >= N) continue;
+        const m = cj * N + ci; if (mask[m] && Math.abs(z[m] - z[k]) <= CLIFF_M) { sum += z[m]; n++; }
+      }
+      return n ? sum / n : z[k];
+    };
+    const X = i => (i - N / 2) * W, Y = h => (h - base) * exag;
+    // wall normal from the outline around the cell, not the cell's own edge, so stair steps on diagonal walls shade as one plane
+    let wnx = 0, wnz = 0;
+    const wallNormal = (i, j, k, s) => {
+      let gx = 0, gz = 0;
+      for (let dj = -3; dj <= 3; dj++) { const cj = j + dj; if (cj < 0 || cj >= N) continue;
+        for (let di = -3; di <= 3; di++) { const ci = i + di; if (ci < 0 || ci >= N) continue; const m = cj * N + ci; if (mask[m] && z[k] - z[m] <= CLIFF_M) { gx += di; gz += dj; } } }
+      const l = Math.hypot(gx, gz), ax = side[s][0], az = side[s][1];
+      if (l === 0 || -(gx * ax + gz * az) / l < 0.3) { wnx = ax; wnz = az; } else { wnx = -gx / l; wnz = -gz / l; }
+    };
+    const put = (x, y, zz, nx, ny, nz, r, g, b) => { const a = v * 3; pos[a] = x; pos[a + 1] = y; pos[a + 2] = zz; nor[a] = nx; nor[a + 1] = ny; nor[a + 2] = nz; col[a] = r; col[a + 1] = g; col[a + 2] = b; v++; };
+    const tri = a => { idx[q++] = a; idx[q++] = a + 1; idx[q++] = a + 2; idx[q++] = a; idx[q++] = a + 2; idx[q++] = a + 3; };
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const k = j * N + i; if (!mask[k]) continue;
+      const a = corner(k, i, j), b = corner(k, i, j + 1), c = corner(k, i + 1, j + 1), d = corner(k, i + 1, j);
+      const cc = colorOf(k, top[k], t.dem[k]), cr = cc[0], cg = cc[1], cb = cc[2], nx = (a + b - c - d) * exag / (2 * W), nz = (a + d - b - c) * exag / (2 * W), l = 1 / Math.hypot(nx, 1, nz);
+      const a0 = v; put(X(i), Y(a), X(j), nx * l, l, nz * l, cr, cg, cb); put(X(i), Y(b), X(j + 1), nx * l, l, nz * l, cr, cg, cb); put(X(i + 1), Y(c), X(j + 1), nx * l, l, nz * l, cr, cg, cb); put(X(i + 1), Y(d), X(j), nx * l, l, nz * l, cr, cg, cb); tri(a0);
+      for (let s = 0; s < 4; s++) {
+        const kind = wallAt(i, j, k, s); if (!kind) continue;
+        const h0 = s === 0 ? d : s === 1 ? c : s === 2 ? b : a, h1 = s === 0 ? a : s === 1 ? d : s === 2 ? c : b;
+        const x0 = s === 0 || s === 1 ? i + 1 : i, y0 = s === 0 || s === 3 ? j : j + 1, x1 = s === 0 || s === 3 ? i : i + 1, y1 = s === 1 || s === 0 ? j : j + 1;
+        const n = kind === 2 ? (j + side[s][1]) * N + i + side[s][0] : -1;
+        // down to the neighbouring roof, or to just under the ground so the coarse ground mesh can't show a gap
+        const lo0 = kind === 2 ? h0 - (z[k] - z[n]) : t.dem[k] - 1, lo1 = kind === 2 ? h1 - (z[k] - z[n]) : t.dem[k] - 1;
+        if (!knownNormals) { wallNormal(i, j, k, s); wn[wi] = wnx; wn[wi + 1] = wnz; }
+        const nxw = wn[wi++], nzw = wn[wi++];
+        const a1 = v;
+        put(X(x0), Y(h0), X(y0), nxw, 0, nzw, cr * 0.8, cg * 0.8, cb * 0.8); put(X(x0), Y(lo0), X(y0), nxw, 0, nzw, cr * 0.55, cg * 0.55, cb * 0.55);
+        put(X(x1), Y(lo1), X(y1), nxw, 0, nzw, cr * 0.55, cg * 0.55, cb * 0.55); put(X(x1), Y(h1), X(y1), nxw, 0, nzw, cr * 0.8, cg * 0.8, cb * 0.8); tri(a1);
+      }
+    }
+    roofs.geometry.dispose();
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.BufferAttribute(nor, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3)); g.setIndex(new THREE.BufferAttribute(idx, 1));
+    roofs.geometry = g;
+  }
+  /* Trees: the canopy raster is split into crowns around its height peaks. Each crown is drawn as a smooth ellipsoid of the
+     crown's height, area and position, starting no lower than 25% of tree height (SOLWEIG's trunk zone), with a trunk. Display only. */
   function placeTrees(t, top) {
-    trunks.count = 0; canopy.visible = false;
+    trunks.count = 0; crowns.count = 0; trunks.instanceMatrix.needsUpdate = true; crowns.instanceMatrix.needsUpdate = true;
     if (surf !== "trees") return;
     const src = (treeSrc === "lidar" && t.cdsmLidar) ? t.cdsmLidar : t.cdsm, sc = t.meta.cdsm_scale, NN = N * N, W = CELL;
-    const tree = new Uint8Array(NN), d = new Float32Array(NN);
-    for (let k = 0; k < NN; k++) { const cz = src[k] * sc; tree[k] = cz > 2 && t.lc[k] !== 2 && t.lc[k] !== 7 && t.dem[k] + cz > top[k] + 0.5 ? 1 : 0; d[k] = tree[k] ? 1e9 : 0; }
-    const D2 = Math.SQRT2;
-    for (let j = 1; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k - 1] + 1, d[k - N] + 1, d[k - N - 1] + D2, d[k - N + 1] + D2); }
-    for (let j = N - 2; j >= 0; j--) for (let i = N - 2; i > 0; i--) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k + 1] + 1, d[k + N] + 1, d[k + N + 1] + D2, d[k + N - 1] + D2); }
-    const comp = new Int32Array(NN).fill(-1), crownR = [], stack = [];
-    for (let k0 = 0; k0 < NN; k0++) {
-      if (!tree[k0] || comp[k0] >= 0) continue;
-      const id = crownR.length; let rmax = 1; comp[k0] = id; stack.push(k0);
-      while (stack.length) { const k = stack.pop(); if (d[k] > rmax) rmax = d[k]; const i = k % N;
-        for (const nb of [k - N, k + N, i > 0 ? k - 1 : -1, i < N - 1 ? k + 1 : -1]) if (nb >= 0 && nb < NN && tree[nb] && comp[nb] < 0) { comp[nb] = id; stack.push(nb); } }
-      crownR.push(rmax);
+    const tree = new Uint8Array(NN), cz = new Float32Array(NN), blur = new Float32Array(NN), tmp = new Float32Array(NN);
+    for (let k = 0; k < NN; k++) { const h = src[k] * sc; cz[k] = h; tree[k] = h > 2 && t.lc[k] !== 2 && t.lc[k] !== 7 && t.dem[k] + h > top[k] + 0.5 ? 1 : 0; blur[k] = tree[k] ? h : 0; }
+    // two passes of a small box blur, so a crown's peak isn't split by per-pixel lidar noise
+    for (let pass = 0; pass < 2; pass++) {
+      for (let j = 0; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; tmp[k] = (blur[k - 1] + blur[k] + blur[k + 1]) / 3; }
+      for (let j = 1; j < N - 1; j++) for (let i = 0; i < N; i++) { const k = j * N + i; blur[k] = (tmp[k - N] + tmp[k] + tmp[k + N]) / 3; }
     }
-    const pos = canGeo.attributes.position.array, col = canGeo.attributes.color.array;
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const label = new Int32Array(NN).fill(-1), queue = new Int32Array(NN);
+    let qh = 0, qt = 0, nc = 0;
+    for (let j = 8; j < N - 8; j++) for (let i = 8; i < N - 8; i++) {
       const k = j * N + i; if (!tree[k]) continue;
-      const g = t.dem[k], cz = src[k] * sc, topY = (g + cz - t.base) * exag;
-      const R = Math.max(crownR[comp[k]] * W, 1.5), u = Math.min(1, Math.max(0, (d[k] * W - 1) / Math.max(R - 1, 0.5)));
-      const th = d[k] <= 1 ? 0 : Math.min(0.75 * cz, (0.8 + 1.1 * R) * Math.sqrt(1 - (1 - u) * (1 - u)));
-      const x = (i - N / 2) * W, z = (j - N / 2) * W, a = k * 3, b = (NN + k) * 3;
-      pos[a] = x; pos[a + 1] = topY; pos[a + 2] = z; pos[b] = x; pos[b + 1] = topY - th * exag; pos[b + 2] = z;
-      const c = lerp3(G2, 0.35 + cz / 30);
-      col[a] = c[0]; col[a + 1] = c[1]; col[a + 2] = c[2]; col[b] = c[0] * 0.55; col[b + 1] = c[1] * 0.55; col[b + 2] = c[2] * 0.55;
+      const b = blur[k]; if (b < 2 || b < blur[k - 1] || b < blur[k + 1] || b < blur[k - N] || b < blur[k + N]) continue;
+      const R = Math.min(8, Math.max(2, Math.round((1.5 + 0.1 * cz[k]) / W)));
+      let peak = true;
+      for (let dj = -R; dj <= R && peak; dj++) for (let di = -R; di <= R; di++) { const q = k + dj * N + di; if (blur[q] > b || (label[q] >= 0 && di * di + dj * dj <= R * R)) { peak = false; break; } }
+      if (peak) { label[k] = nc++; queue[qt++] = k; }
     }
-    const idx = [];
-    for (let j = 0; j < N - 1; j++) for (let i = 0; i < N - 1; i++) {
-      const a = j * N + i, b = a + 1, c = a + N, e = c + 1;
-      if (!(tree[a] && tree[b] && tree[c] && tree[e])) continue;
-      idx.push(a, c, b, b, c, e, NN + a, NN + b, NN + c, NN + b, NN + e, NN + c);
-    }
-    canGeo.setIndex(idx.length ? new THREE.BufferAttribute(new Uint32Array(idx), 1) : null);
-    canGeo.attributes.position.needsUpdate = true; canGeo.attributes.color.needsUpdate = true; canGeo.computeVertexNormals();
-    canopy.visible = idx.length > 0;
-    const RW = 3, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
+    const grow = () => { while (qh < qt) { const k = queue[qh++], i = k % N; for (const q of [k - N, k + N, i > 0 ? k - 1 : -1, i < N - 1 ? k + 1 : -1]) if (q >= 0 && q < NN && tree[q] && label[q] < 0) { label[q] = label[k]; queue[qt++] = q; } } };
+    grow();
+    for (let k = 0; k < NN; k++) if (tree[k] && label[k] < 0) { label[k] = nc++; queue[qt++] = k; grow(); }
+    const A = new Float32Array(nc), Sx = new Float32Array(nc), Sz = new Float32Array(nc), Hm = new Float32Array(nc);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = j * N + i, c = label[k]; if (c < 0) continue; A[c]++; Sx[c] += i; Sz[c] += j; if (cz[k] > Hm[c]) Hm[c] = cz[k]; }
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), yaw = new THREE.Euler(), v = new THREE.Vector3(), s3 = new THREE.Vector3(), colr = new THREE.Color();
     let n = 0;
-    for (let j = RW; j < N - RW && n < MAX_TRUNKS; j++) for (let i = RW; i < N - RW; i++) {
-      const k = j * N + i; if (!tree[k] || d[k] < 2) continue;
-      const h = src[k] * sc; if (h < 3) continue;
-      let peak = true, area = 0;
-      for (let dj = -RW; dj <= RW && peak; dj++) for (let di = -RW; di <= RW; di++) {
-        const hv = src[k + dj * N + di] * sc;
-        if (hv > h || (hv === h && (dj < 0 || (dj === 0 && di < 0)))) { peak = false; break; }
-        if (hv > h * 0.6) area++;
-      }
-      if (!peak || area < 12) continue;
-      const g = t.dem[k], under = Math.min((pos[(NN + k) * 3 + 1] / exag + t.base) - g, 0.6 * h);
-      const w = Math.min(Math.max(0.3, Math.sqrt(area) / 9), 0.9);
-      m4.compose(v.set((i - N / 2) * W, (g - t.base) * exag, (j - N / 2) * W), q, s3.set(w, (under + 0.5) * exag, w));
-      trunks.setMatrixAt(n++, m4);
+    for (let c = 0; c < nc && n < MAX_TREES; c++) {
+      const area = A[c] * W * W, h = Hm[c]; if (area < 3) continue;
+      const fx = Sx[c] / A[c], fz = Sz[c] / A[c], k = Math.round(fz) * N + Math.round(fx), g = t.dem[k];
+      const r = Math.min(Math.max(1.5, Math.sqrt(area / Math.PI) * 1.2), 0.7 * h + 2, 16);
+      const low = 0.25 * h, ry = Math.min((h - low) / 2, r * 1.15), wob = (c * 2654435761 >>> 0) / 4294967296;
+      yaw.set(0, wob * 6.28, 0); q.setFromEuler(yaw);
+      m4.compose(v.set((fx + 0.5 - N / 2) * W, (g + h - ry - t.base) * exag, (fz + 0.5 - N / 2) * W), q, s3.set(r * (0.94 + wob * 0.12), ry * exag, r * (1.06 - wob * 0.12)));
+      crowns.setMatrixAt(n, m4);
+      const cc = lerp3(G2, 0.35 + h / 30 + (wob - 0.5) * 0.12); crowns.setColorAt(n, colr.setRGB(cc[0], cc[1], cc[2]));
+      const w = Math.min(Math.max(0.3, r / 9), 0.9);
+      m4.compose(v.set((fx + 0.5 - N / 2) * W, (g - t.base) * exag, (fz + 0.5 - N / 2) * W), q.identity(), s3.set(w, (h - 2 * ry + ry * 0.4) * exag, w));
+      trunks.setMatrixAt(n, m4); n++;
     }
-    trunks.count = n; trunks.instanceMatrix.needsUpdate = true;
+    crowns.count = trunks.count = n; crowns.instanceMatrix.needsUpdate = true; crowns.instanceColor.needsUpdate = true; trunks.instanceMatrix.needsUpdate = true;
   }
   function controls3D() {
     opts(Q("cityTabs3"), items, city3, id => { city3 = id; render3D(); });
@@ -1054,20 +1124,22 @@ function viewer3D(P, cities, city3) {
     if (token !== token3) return;
     Q("glmsg").hidden = true;
     setBlock(t.nv, t.cell);
-    const pos = geo.attributes.position.array, col = geo.attributes.color.array;
     const top = method === "old" ? t.old : t.dsm;
     let hmax = 1; for (let i = 0; i < t.dsm.length; i++) hmax = Math.max(hmax, t.dsm[i] - t.dem[i]);
+    const colorOf = (k, h, g) => {
+      if (colorBy === "lc") return LCC[t.lc[k]] || [0.5, 0.5, 0.5];
+      if (colorBy === "prov") { const p = t.prov[k]; return method === "old" && p === 1 && t.old[k] !== t.dsm[k] ? PROV[2] : PROV[p]; }
+      return lerp3(H2, Math.log1p(Math.max(0, h - g)) / Math.log1p(hmax));
+    };
+    const tex = groundTex.image.data, gg = ground.geometry, gp = gg.attributes.position.array, { G, GN } = gg.userData;
+    for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) gp[(j * GN + i) * 3 + 1] = (t.dem[Math.min(j * G, N - 1) * N + Math.min(i * G, N - 1)] - t.base) * exag;
     for (let k = 0; k < N * N; k++) {
-      const g = t.dem[k];
-      const h = surf === "dem" ? g : top[k];
-      pos[k * 3 + 1] = (h - t.base) * exag;
-      let c;
-      if (colorBy === "lc") c = LCC[t.lc[k]] || [0.5, 0.5, 0.5];
-      else if (colorBy === "prov") { const p = t.prov[k]; c = method === "old" && p === 1 && t.old[k] !== t.dsm[k] ? PROV[2] : PROV[p]; }
-      else c = lerp3(H2, Math.log1p(Math.max(0, h - g)) / Math.log1p(hmax));
-      col[k * 3] = c[0]; col[k * 3 + 1] = c[1]; col[k * 3 + 2] = c[2];
+      const c = colorOf(k, surf === "dem" ? t.dem[k] : Math.min(top[k], t.dem[k] + 1), t.dem[k]);
+      tex[k * 4] = c[0] * 255; tex[k * 4 + 1] = c[1] * 255; tex[k * 4 + 2] = c[2] * 255; tex[k * 4 + 3] = 255;
     }
-    geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; geo.computeVertexNormals(); geo.computeBoundingSphere();
+    groundTex.needsUpdate = true; gg.attributes.position.needsUpdate = true; gg.computeVertexNormals(); gg.computeBoundingSphere();
+    roofs.visible = surf !== "dem";
+    if (roofs.visible) buildRoofs(t, top, colorOf);
     placeTrees(t, top);
     const leg = colorBy === "prov" ? [["Roof with lidar return", PROV[1]], ["Roof filled or estimated", PROV[2]], ["Ground", PROV[0]], ["Water", PROV[3]]]
       : colorBy === "lc" ? [["Paved", LCC[1]], ["Building", LCC[2]], ["Grass", LCC[5]], ["Bare soil", LCC[6]], ["Water", LCC[7]]]
@@ -1081,7 +1153,8 @@ function viewer3D(P, cities, city3) {
     Q("glcap").textContent = `${byId[city3].name}, ${t.meta.size / 1000} × ${t.meta.size / 1000} km${t.cell > 1 ? `, shown at ${t.cell} m` : ""}`;
     curLat = t.meta.center[0]; updateSun();
   }
-  Q("exag").oninput = e => { exag = +e.target.value; Q("exagv").textContent = exag + "×"; render3D(); };
+  let exagWait = 0;
+  Q("exag").oninput = e => { exag = +e.target.value; Q("exagv").textContent = exag + "×"; clearTimeout(exagWait); exagWait = setTimeout(render3D, 150); };
   Q("spin").onchange = e => { if (controls) controls.autoRotate = e.target.checked; };
   controls3D();
   new IntersectionObserver((es, o) => { if (es.some(x => x.isIntersecting)) { o.disconnect(); render3D(); } }, { root: deck, rootMargin: "200px" }).observe(Q("gl"));
