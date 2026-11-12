@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cool Routes Prototype</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root { color-scheme: light; --bg: #ffffff; --fg: #1d1f21; --muted: #5f6368; --line: #d9dbde; --soft: #f4f5f6; --accent: #1a5fb4;
+  --font: Arial, "Helvetica Neue", Helvetica, sans-serif; --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.45; }
+header { padding: 14px 24px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; }
+header h1 { font-size: 22px; margin: 0; }
+header .sub { color: var(--muted); font-size: 13px; }
+header a { color: var(--accent); font-size: 13px; }
+main { max-width: 1400px; margin: 0 auto; padding: 14px 24px 60px; display: flex; flex-direction: column; gap: 16px; }
+h2 { font-size: 19px; margin: 18px 0 4px; }
+h3 { font-size: 15px; margin: 0; }
+.small { font-size: 13px; color: var(--muted); }
+.opts { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.opts .l { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.opts button, button.b { border: 1px solid var(--line); background: #fff; padding: 4px 10px; font-size: 13px; cursor: pointer; font: inherit; font-size: 13px; }
+.opts button[aria-pressed="true"] { background: var(--fg); color: #fff; border-color: var(--fg); }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 18px; align-items: end; padding: 12px; border: 1px solid var(--line); background: var(--soft); }
+.controls label { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--muted); }
+.controls input[type=date], .controls select { font: inherit; font-size: 14px; padding: 3px 4px; }
+.status { font-size: 13px; padding: 6px 10px; border-left: 4px solid var(--line); background: #fff; }
+.status.live { border-left-color: var(--s3); } .status.busy { border-left-color: var(--s2); } .status.err { border-left-color: #c0392b; }
+.split { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); gap: 16px; }
+.mapbox { position: relative; height: 560px; border: 1px solid var(--line); }
+#map, #gl { position: absolute; inset: 0; }
+#gl canvas { display: block; width: 100% !important; height: 100% !important; }
+.mapbox { overflow: hidden; }
+.side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; vertical-align: top; }
+th { background: var(--soft); font-weight: 600; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr.sel td { background: #eef3fb; }
+.tw { overflow-x: auto; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+.chart { border: 1px solid var(--line); padding: 6px; }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart text { fill: #444; font-size: 11px; font-family: var(--font); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.panel { border: 1px solid var(--line); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+canvas.ras { width: 100%; height: auto; image-rendering: pixelated; border: 1px solid var(--line); background: #e9e9e9; }
+.legendbar { height: 10px; border: 1px solid var(--line); }
+.legendlab { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.tip { position: fixed; z-index: 90; pointer-events: none; background: #fff; border: 1px solid #999; padding: 5px 8px; font-size: 12.5px; max-width: 280px; display: none; }
+code { font-size: 12.5px; background: var(--soft); padding: 1px 4px; }
+ol li, ul li { margin-bottom: 4px; }
+@media (max-width: 900px) { .split { grid-template-columns: minmax(0, 1fr); } .mapbox { height: 420px; } main { padding: 12px 16px 40px; } }
+</style>
+<header>
+  <h1>Cool Routes: walking by perceived effort</h1>
+  <span class="sub">Prototype · Seattle, downtown to Capitol Hill · SOLWEIG-light at 2 m</span>
+  <a href="index.html">← Back to the slides</a>
+</header>
+<main>
+  <div class="controls">
+    <label>Date<input type="date" id="date"></label>
+    <label>Departure time: <b id="hourv">14:00</b><input type="range" id="hour" min="5" max="21" step="0.25" value="14"></label>
+    <label>Tree crown growth (see below)<select id="grow"></select></label>
+    <label>Heat sensitivity: <b id="kv">0.05</b> per °C<input type="range" id="k" min="0" max="0.15" step="0.01" value="0.05"></label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="b primary" id="live">Run SOLWEIG for this trip</button><button class="b" id="clear">Clear points</button></div>
+  </div>
+  <div class="status" id="status">Loading…</div>
+  <div class="split">
+    <div class="side">
+      <div class="opts"><span class="l">View</span><span id="viewSeg" class="opts"></span><span class="l" style="margin-left:12px">Overlay</span><span id="ovSeg" class="opts"></span></div>
+      <div class="mapbox"><div id="map"></div><div id="gl" hidden></div></div>
+      <div id="ovLegend"></div>
+      <p class="small">Click the map to set a start, then an end. Routes: <span class="sw" style="background:var(--s1)"></span>shortest, <span class="sw" style="background:var(--s2)"></span>fastest (slope-aware), <span class="sw" style="background:var(--s3)"></span>least perceived effort (slope and heat). Map © OpenStreetMap contributors.</p>
+    </div>
+    <div class="side">
+      <h3>Routes</h3>
+      <div class="tw"><table id="routes"><tr><td class="small">Set a start and an end on the map.</td></tr></table></div>
+      <p class="small" id="routeNote"></p>
+      <h3>Along the selected route</h3>
+      <div class="chart"><svg id="prof"></svg></div>
+    </div>
+  </div>
+
+  <h2>Under the hood</h2>
+  <p class="small">Everything the routes are built from. In precomputed mode these are the study area's rasters for the default day; after a live run they switch to that run's corridor.</p>
+  <div class="grid2">
+    <div class="panel"><h3>1. How a route is computed</h3><ol class="small" style="margin:0;padding-left:18px">
+      <li><b>Corridor (live):</b> walking paths within <span id="aCorr"></span> of the shortest walking route, plus a <span id="aBuf"></span> shade margin, are modelled.</li>
+      <li><b>Weather:</b> hourly air temperature, humidity, wind and sun (direct and diffuse) for the chosen date from Open-Meteo.</li>
+      <li><b>SOLWEIG-light:</b> walls, sky view factor, then hour-by-hour shadows, radiation, mean radiant temperature (Tmrt) and UTCI.</li>
+      <li><b>Sampling:</b> each path segment gets the mean UTCI, Tmrt and shade of the pixels it crosses, for every hour.</li>
+      <li><b>Routing:</b> time-dependent Dijkstra in the browser: each segment is costed at the hour you would reach it.</li>
+    </ol></div>
+    <div class="panel"><h3>2. Model runs and timing</h3><div class="tw"><table id="timing"></table></div></div>
+  </div>
+  <div class="grid2">
+    <div class="panel"><h3>3. Inputs</h3><div class="opts" id="inSeg"></div><canvas class="ras" id="inCanvas"></canvas><div id="inLegend"></div></div>
+    <div class="panel"><h3>4. SOLWEIG outputs</h3><div class="opts" id="outSeg"></div>
+      <label class="small">Hour: <b id="outHv"></b> <input type="range" id="outH" min="0" max="23" step="1" value="14" style="width:60%"></label>
+      <canvas class="ras" id="outCanvas"></canvas><div id="outLegend"></div><p class="small" id="outStats"></p></div>
+  </div>
+  <div class="panel"><h3>5. Weather for the day</h3><div class="grid2" id="metCharts"></div><p class="small" id="metNote"></p></div>
+  <div class="panel"><h3>6. Validation: are the SOLWEIG rasters credible?</h3><div id="valid" class="small">Loading…</div></div>
+  <div class="panel"><h3>7. Tree crown growth</h3><div id="grow7" class="small"></div></div>
+  <div class="panel"><h3>8. Formulas and parameters</h3><p class="small">Marked <b>ASSUMPTION</b> where I chose the value for this prototype rather than taking it from a published source.</p><div class="tw"><table id="assume"></table></div></div>
+  <div class="panel"><h3>9. Running live</h3><div class="small" id="liveHelp"></div></div>
+</main>
+<div class="tip" id="tip"></div>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+const $ = s => document.querySelector(s);
+const fmt = (n, d = 0) => n == null || !isFinite(n) ? "–" : n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const tip = $("#tip");
+const showTip = (e, h) => { tip.innerHTML = h; tip.style.display = "block"; tip.style.left = Math.min(e.clientX + 12, innerWidth - 290) + "px"; tip.style.top = (e.clientY + 12) + "px"; };
+const hideTip = () => { tip.style.display = "none"; };
+function opts(el, items, cur, pick) { el.replaceChildren(...items.map(([k, l]) => { const b = document.createElement("button"); b.textContent = l; b.setAttribute("aria-pressed", String(k === cur)); b.onclick = () => pick(k); return b; })); }
+const status = (t, cls = "") => { const s = $("#status"); s.textContent = t; s.className = "status " + cls; };
+const getJSON = u => fetch(u).then(r => { if (!r.ok) throw new Error(u + " " + r.status); return r.json(); });
+async function pngData(url) {
+  const bmp = await createImageBitmap(await (await fetch(url)).blob(), { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+  const cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height;
+  const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(bmp, 0, 0);
+  return cx.getImageData(0, 0, bmp.width, bmp.height).data;
+}
+
+/* ---------- data ---------- */
+const A = await getJSON("data/route/area.json");
+const NETW = await getJSON("data/route/network.json");
+const NW = A.width, NH = A.height, RES = A.res_m, NN = NW * NH;
+const nodes = NETW.nodes, E = NETW.edges;
+const adj = nodes.map(() => []);
+E.forEach((e, i) => adj[e[0]].push(i));
+const VAR = { utci: { label: "UTCI (feels-like temperature)", unit: "°C", lo: 20, hi: 50 }, tmrt: { label: "Mean radiant temperature", unit: "°C", lo: 20, hi: 75 },
+  shadow: { label: "Sunlit (SOLWEIG shadow: 1 = full sun, 0 = shade)", unit: "", lo: 0, hi: 1 }, svf: { label: "Sky view factor", unit: "", lo: 0, hi: 1 } };
+const QUANT = { ...A.quant, svf: [0, 1 / 250] };
+let grow = A.variants.g1 ? 1 : +(Object.keys(A.variants)[0] || "g0").slice(1);  // +1 m is the growth the NAIP check supports (section 7)
+const edgeCache = {};
+async function edgesFor(tag) { return edgeCache[tag] ??= Object.fromEntries(await Promise.all(["utci", "tmrt", "shadow"].map(async v => [v, await getJSON(`data/route/edges_${v}_${tag}.json`)]))); }
+const layerCache = {};
+async function layer(tag, v, h) {   // Float32Array NW*NH of hour h for the precomputed day
+  const key = `${tag}/${v}/${h}`; if (layerCache[key]) return layerCache[key];
+  const [off, sc] = QUANT[v];
+  if (v === "svf") { const d = await pngData("data/route/svf.png"), a = new Float32Array(NN); for (let k = 0; k < NN; k++) a[k] = d[k * 4] * sc; return (layerCache[key] = a); }
+  const d = await pngData(`data/route/${A.variants[tag][v][Math.floor(h / 3)]}`), ch = h % 3, a = new Float32Array(NN);
+  for (let k = 0; k < NN; k++) { const b = d[k * 4 + ch]; a[k] = b === 255 ? NaN : off + sc * b; }
+  return (layerCache[key] = a);
+}
+const BASE = {};
+{
+  const [D, M] = await Promise.all([pngData("data/route/base_dsm.png"), pngData("data/route/base_dem.png")]);
+  BASE.dsm = new Float32Array(NN); BASE.dem = new Float32Array(NN); BASE.lc = new Uint8Array(NN);
+  for (let k = 0, q = 0; k < NN; k++, q += 4) { BASE.dsm[k] = A.zmin + (D[q] * 256 + D[q + 1]) * A.zscale; BASE.lc[k] = D[q + 2]; BASE.dem[k] = A.zmin + (M[q] * 256 + M[q + 1]) * A.zscale; }
+}
+const treeCache = {};
+async function trees(g) { if (treeCache[g]) return treeCache[g]; const d = await pngData(`data/route/trees_g${g}.png`), a = new Uint8Array(NN); for (let k = 0; k < NN; k++) a[k] = d[k * 4]; return (treeCache[g] = a); }
+
+/* ---------- state ---------- */
+let pts = [], hour = 14, K = 0.05, live = null, server = false, sel = 2, routes = null, ov = "utci", view = "2d";
+$("#date").value = A.date;
+const tagOf = () => "g" + grow;
+const hasPre = () => !!A.variants[tagOf()];
+
+/* ---------- cost model ---------- */
+// Tobler (1993) hiking function, km/h, S = rise / run
+const tobler = S => 6 * Math.exp(-3.5 * Math.abs(S + 0.05));
+const HEAT_FREE = 26;   // ASSUMPTION threshold: UTCI above "no thermal stress" (9-26 °C on the UTCI scale)
+function interp(arr, hours, t) {
+  if (!arr) return null;
+  if (t <= hours[0]) return arr[0];
+  for (let i = 1; i < hours.length; i++) if (t <= hours[i]) { const a = arr[i - 1], b = arr[i]; if (a == null || b == null) return a ?? b; const f = (t - hours[i - 1]) / (hours[i] - hours[i - 1]); return a + (b - a) * f; }
+  return arr[arr.length - 1];
+}
+function source() {   // per-edge hourly arrays: live run if there is one for this date and growth, else the precomputed day
+  if (live && live.date === $("#date").value && live.grow_m === grow) return { hours: live.hours, get: (v, i) => live.edges[v][i], allowed: i => live.edges.utci[i] !== undefined, tag: "live" };
+  if (!hasPre() || $("#date").value !== A.date) return null;
+  const d = edgeCache[tagOf()], hrs = [...Array(A.hours).keys()];
+  return d ? { hours: hrs, get: (v, i) => d[v][i], allowed: () => true, tag: "pre" } : null;
+}
+function seg(i, t, src) {
+  const e = E[i], L = Math.max(e[2], 0.5), S = Math.max(-0.4, Math.min(0.4, e[3] / L)), sec = L / (tobler(S) / 3.6);
+  const u = src ? interp(src.get("utci", i), src.hours, t) : null, lit = src ? interp(src.get("shadow", i), src.hours, t) : null, sh = lit == null ? null : 1 - lit;  // SOLWEIG shadow is 1 in sun
+  return { L, sec, u, sh, mult: u == null ? 1 : 1 + K * Math.max(0, u - HEAT_FREE) };
+}
+function dijkstra(o, d, kind, src) {
+  const n = nodes.length, best = new Float64Array(n).fill(Infinity), el = new Float64Array(n), prev = new Int32Array(n).fill(-1);
+  const heap = [[0, o]]; best[o] = 0;
+  const push = x => { heap.push(x); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  while (heap.length) {
+    const [c, u] = pop(); if (c > best[u]) continue; if (u === d) break;
+    for (const i of adj[u]) {
+      if (src && !src.allowed(i)) continue;
+      const s = seg(i, hour + el[u] / 3600, src), w = kind === "short" ? s.L : kind === "fast" ? s.sec : s.sec * s.mult, v = E[i][1];
+      if (c + w < best[v]) { best[v] = c + w; el[v] = el[u] + s.sec; prev[v] = i; push([best[v], v]); }
+    }
+  }
+  if (prev[d] < 0 && o !== d) return null;
+  const path = []; for (let v = d; v !== o; v = E[prev[v]][0]) path.push(prev[v]);
+  return path.reverse();
+}
+function summarize(path, src) {
+  let t = 0, L = 0, climb = 0, perc = 0, uSum = 0, uT = 0, hot = 0, shadeL = 0, shL = 0, uMax = -Infinity; const prof = [];
+  for (const i of path) {
+    const s = seg(i, hour + t / 3600, src), e = E[i];
+    prof.push({ d: L, z: nodes[e[0]][2], u: s.u, sh: s.sh });
+    L += s.L; t += s.sec; perc += s.sec * s.mult; climb += Math.max(0, e[3]);
+    if (s.u != null) { uSum += s.u * s.sec; uT += s.sec; if (s.u >= 32) hot += s.sec; uMax = Math.max(uMax, s.u); }
+    if (s.sh != null) { shadeL += s.sh * s.L; shL += s.L; }
+  }
+  if (path.length) { const e = E[path[path.length - 1]]; prof.push({ d: L, z: nodes[e[1]][2], u: prof[prof.length - 1].u, sh: prof[prof.length - 1].sh }); }
+  return { L, t, perc, climb, uMean: uT ? uSum / uT : null, uMax: isFinite(uMax) ? uMax : null, hotMin: hot / 60, shade: shL ? shadeL / shL : null, prof };
+}
+function nearest(lon, lat) {
+  let b = -1, bd = Infinity; const cl = Math.cos(lat * Math.PI / 180);
+  nodes.forEach((n, i) => { if (!adj[i].length) return; const d = ((n[0] - lon) * cl) ** 2 + (n[1] - lat) ** 2; if (d < bd) { bd = d; b = i; } });
+  return b;
+}
+const RCOL = ["#2a78d6", "#eb6834", "#1baf7a"], RNAME = ["Shortest", "Fastest", "Least effort"];
+function computeRoutes() {
+  if (pts.length < 2) { routes = null; drawRoutes(); renderTable(); return; }
+  const src = source();
+  if (!src) { routes = null; drawRoutes(); renderTable(); status(`No model output for ${$("#date").value} with +${grow} m crowns yet. ${server ? "Press “Run SOLWEIG for this trip”." : "Start the local server to run it live (section 9), or go back to " + A.date + "."}`, "err"); return; }
+  routes = ["short", "fast", "effort"].map(k => { const p = dijkstra(pts[0], pts[1], k, src); return p ? { kind: k, path: p, ...summarize(p, src) } : null; });
+  drawRoutes(); renderTable(); drawProfile();
+  const msg = src.tag === "live" ? `Live SOLWEIG-light run for ${live.date}, hours ${live.hours[0]}:00–${live.hours[live.hours.length - 1]}:00, corridor ${fmt(live.corridor.pixels * RES * RES / 1e6, 2)} km² (${live.corridor.edges} path segments).` : `Precomputed day: ${A.date}${A.date === "2021-06-28" ? " (Pacific Northwest heat dome)" : ""}, whole study area.`;
+  status(msg + (server ? " Local server connected." : ""), src.tag === "live" ? "live" : "");
+}
+function renderTable() {
+  const t = $("#routes");
+  if (!routes) { t.innerHTML = `<tr><td class="small">${pts.length ? "Now click an end point." : "Set a start and an end on the map."}</td></tr>`; $("#routeNote").textContent = ""; return; }
+  const base = routes[0];
+  t.innerHTML = `<thead><tr><th>Route</th><th class="n">Distance</th><th class="n">Walk</th><th class="n">Feels like</th><th class="n">Climb</th><th class="n">Mean UTCI</th><th class="n">≥ 32 °C</th><th class="n">Shaded</th></tr></thead><tbody>${routes.map((r, i) => r ? `<tr data-i="${i}" class="${i === sel ? "sel" : ""}" style="cursor:pointer"><td><span class="sw" style="background:${RCOL[i]}"></span>${RNAME[i]}</td><td class="n">${fmt(r.L)} m</td><td class="n">${fmt(r.t / 60, 1)} min</td><td class="n">${fmt(r.perc / 60, 1)} min</td><td class="n">${fmt(r.climb)} m</td><td class="n">${fmt(r.uMean, 1)} °C</td><td class="n">${fmt(r.hotMin, 1)} min</td><td class="n">${r.shade == null ? "–" : fmt(100 * r.shade) + "%"}</td></tr>` : `<tr><td>${RNAME[i]}</td><td colspan="7">no route in the modelled area</td></tr>`).join("")}</tbody>`;
+  t.querySelectorAll("tr[data-i]").forEach(tr => tr.onclick = () => { sel = +tr.dataset.i; renderTable(); drawProfile(); drawRoutes(); });
+  const e = routes[2];
+  const dHot = base && e ? base.hotMin - e.hotMin : 0;
+  $("#routeNote").textContent = e && base ? `“Feels like” is walking time with each minute weighted by its heat (section 8). The least-effort route is ${fmt(100 * (e.L / base.L - 1))}% longer than the shortest but feels ${fmt(base.perc / 60 - e.perc / 60, 1)} min shorter, with mean UTCI ${fmt(base.uMean - e.uMean, 1)} °C lower and ${fmt(100 * ((e.shade || 0) - (base.shade || 0)))} points more shade. ${Math.abs(dHot) < 0.5 ? "Both spend about the same time at UTCI 32 °C or more (strong heat stress)." : `It spends ${fmt(Math.abs(dHot), 1)} min ${dHot > 0 ? "less" : "more"} at UTCI 32 °C or more (strong heat stress)${dHot < 0 ? ", because it is longer" : ""}.`}` : "";
+}
+function drawProfile() {
+  const svg = $("#prof"), r = routes && routes[sel];
+  if (!r) { svg.innerHTML = ""; return; }
+  const Wd = 520, Hh = 250, l = 40, rr = 10, P = r.prof, Lm = Math.max(1, r.L);
+  const zs = P.map(p => p.z), z0 = Math.min(...zs) - 2, z1 = Math.max(...zs) + 2, us = P.map(p => p.u).filter(v => v != null);
+  const u0 = Math.min(20, ...us), u1 = Math.max(45, ...us);
+  const x = d => l + (Wd - l - rr) * d / Lm, yz = z => 10 + 90 * (1 - (z - z0) / (z1 - z0)), yu = u => 140 + 85 * (1 - (u - u0) / (u1 - u0));
+  let g = `<text x="${l}" y="8">Elevation (m)</text><text x="${l}" y="133">UTCI (°C) — shaded stretches in green below</text>`;
+  for (const [v, y] of [[z0, yz(z0)], [z1, yz(z1)]]) g += `<text x="${l - 4}" y="${y + 4}" text-anchor="end">${fmt(v)}</text><line x1="${l}" x2="${Wd - rr}" y1="${y}" y2="${y}" stroke="#eee"/>`;
+  for (const v of [26, 32, 38, 46]) if (v > u0 && v < u1) g += `<line x1="${l}" x2="${Wd - rr}" y1="${yu(v)}" y2="${yu(v)}" stroke="#eee"/><text x="${l - 4}" y="${yu(v) + 4}" text-anchor="end">${v}</text>`;
+  g += `<path d="${P.map((p, i) => (i ? "L" : "M") + x(p.d).toFixed(1) + "," + yz(p.z).toFixed(1)).join("")}" fill="none" stroke="#5f6368" stroke-width="2"/>`;
+  g += `<path d="${P.filter(p => p.u != null).map((p, i) => (i ? "L" : "M") + x(p.d).toFixed(1) + "," + yu(p.u).toFixed(1)).join("")}" fill="none" stroke="${RCOL[sel]}" stroke-width="2"/>`;
+  P.forEach((p, i) => { if (i < P.length - 1 && p.sh != null && p.sh > 0.5) g += `<rect x="${x(p.d)}" y="232" width="${Math.max(1, x(P[i + 1].d) - x(p.d))}" height="6" fill="#1baf7a"/>`; });
+  g += `<text x="${Wd - rr}" y="${Hh - 2}" text-anchor="end">${fmt(r.L)} m</text><text x="${l}" y="${Hh - 2}">0</text>`;
+  svg.setAttribute("viewBox", `0 0 ${Wd} ${Hh}`); svg.innerHTML = g;
+}
+
+/* ---------- colour ---------- */
+const lerp = (a, b, f) => a + (b - a) * f;
+function ramp(stops, f) { f = Math.min(1, Math.max(0, f)) * (stops.length - 1); const i = Math.min(Math.floor(f), stops.length - 2), t = f - i; return [0, 1, 2].map(k => Math.round(lerp(stops[i][k], stops[i + 1][k], t))); }
+const HEAT = [[49, 87, 160], [123, 160, 205], [226, 226, 222], [244, 165, 96], [214, 76, 50], [130, 22, 30]];   // cool - neutral - hot
+const GREY = [[40, 40, 44], [250, 250, 248]], VIR = [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]];
+const rampFor = v => v === "shadow" ? GREY : v === "svf" ? VIR : HEAT;
+function colorize(arr, v, lo, hi, w = NW, h = NH) {
+  const img = new ImageData(w, h), st = rampFor(v);
+  for (let k = 0; k < w * h; k++) { const x = arr[k]; if (!isFinite(x)) { img.data[k * 4 + 3] = 0; continue; } const c = ramp(st, (x - lo) / (hi - lo)); img.data[k * 4] = c[0]; img.data[k * 4 + 1] = c[1]; img.data[k * 4 + 2] = c[2]; img.data[k * 4 + 3] = 255; }
+  return img;
+}
+function legend(el, v, lo, hi) {
+  const st = rampFor(v); el.innerHTML = `<div class="legendbar" style="background:linear-gradient(to right,${st.map(c => `rgb(${c})`).join(",")})"></div><div class="legendlab"><span>${lo}${VAR[v].unit}</span><span>${VAR[v].label}</span><span>${hi}${VAR[v].unit}</span></div>`;
+}
+
+/* ---------- live layers ---------- */
+function liveLayer(v, hIdx) {   // decoded live raster on its corridor window, or null
+  if (!live || !live.layers[v]) return null;
+  const s = live.layers[v][v === "svf" ? 0 : hIdx]; if (!s) return null;
+  const bytes = Uint8Array.from(atob(s), c => c.charCodeAt(0)), [off, sc] = live.quant[v], a = new Float32Array(bytes.length);
+  for (let k = 0; k < bytes.length; k++) a[k] = bytes[k] === 255 ? NaN : off + sc * bytes[k];
+  return a;
+}
+
+/* ---------- 2D map ---------- */
+const map = new maplibregl.Map({ container: "map", style: { version: 8, sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, attribution: "© OpenStreetMap contributors" } }, layers: [{ id: "osm", type: "raster", source: "osm" }] },
+  bounds: [[NETW.bbox[0], NETW.bbox[1]], [NETW.bbox[2], NETW.bbox[3]]], fitBoundsOptions: { padding: 20 } });
+await new Promise(r => map.on("load", r));
+const ovCanvas = document.createElement("canvas");
+map.addSource("ov", { type: "image", url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", coordinates: A.corners });
+map.addLayer({ id: "ov", type: "raster", source: "ov", paint: { "raster-opacity": 0.6, "raster-resampling": "nearest" } });
+map.addSource("routes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+map.addLayer({ id: "routes-casing", type: "line", source: "routes", paint: { "line-color": "#fff", "line-width": ["case", ["get", "sel"], 9, 6] }, layout: { "line-cap": "round", "line-join": "round" } });
+map.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": ["get", "color"], "line-width": ["case", ["get", "sel"], 5, 3] }, layout: { "line-cap": "round", "line-join": "round" } });
+map.addSource("pts", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": 7, "circle-color": ["get", "c"], "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
+map.addSource("corr", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+map.addLayer({ id: "corr", type: "line", source: "corr", paint: { "line-color": "#1d1f21", "line-width": 1.5, "line-dasharray": [3, 2] } });
+map.addSource("net", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+map.addLayer({ id: "net", type: "line", source: "net", paint: { "line-color": ["get", "c"], "line-width": 2 } });
+map.on("click", e => {
+  const n = nearest(e.lngLat.lng, e.lngLat.lat);
+  if (pts.length >= 2) pts = [];
+  pts.push(n); drawPts(); computeRoutes();
+});
+map.on("mousemove", "net", e => { const p = e.features[0].properties; showTip(e.originalEvent, `Segment: ${fmt(p.L)} m, slope ${fmt(p.s, 1)}%, UTCI ${fmt(p.u, 1)} °C, effort ×${fmt(p.m, 2)}`); });
+map.on("mouseleave", "net", hideTip);
+function drawPts() { map.getSource("pts").setData({ type: "FeatureCollection", features: pts.map((n, i) => ({ type: "Feature", properties: { c: i ? "#c0392b" : "#1d1f21" }, geometry: { type: "Point", coordinates: nodes[n].slice(0, 2) } })) }); }
+function drawRoutes() {
+  const f = (routes || []).map((r, i) => r && { type: "Feature", properties: { color: RCOL[i], sel: i === sel }, geometry: { type: "MultiLineString", coordinates: r.path.map(j => E[j][4]) } }).filter(Boolean);
+  f.sort((a, b) => a.properties.sel - b.properties.sel);
+  map.getSource("routes").setData({ type: "FeatureCollection", features: f });
+  if (glReady) draw3DRoutes();
+}
+async function drawOverlay() {
+  if (ov === "none" || ov === "net") { map.setLayoutProperty("ov", "visibility", "none"); $("#ovLegend").innerHTML = ""; }
+  map.setLayoutProperty("net", "visibility", ov === "net" ? "visible" : "none");
+  if (ov === "net") { drawNet(); return; }
+  if (ov === "none") return;
+  const h = Math.max(0, Math.min(23, Math.round(hour))), V = VAR[ov];
+  let arr, w = NW, hh = NH, corners = A.corners;
+  const li = live && live.date === $("#date").value && live.grow_m === grow ? live.hours.indexOf(h) : -1;
+  if (li >= 0 || (live && ov === "svf" && live.date === $("#date").value)) { const c = live.corridor; arr = liveLayer(ov, Math.max(0, li)); w = c.window[3]; hh = c.window[2]; corners = live.cornersLL; }
+  else if (hasPre() && $("#date").value === A.date) arr = await layer(tagOf(), ov, h);
+  if (!arr) { map.setLayoutProperty("ov", "visibility", "none"); return; }
+  ovCanvas.width = w; ovCanvas.height = hh; ovCanvas.getContext("2d").putImageData(colorize(arr, ov, V.lo, V.hi, w, hh), 0, 0);
+  map.getSource("ov").updateImage({ url: ovCanvas.toDataURL(), coordinates: corners });
+  map.setLayoutProperty("ov", "visibility", "visible");
+  legend($("#ovLegend"), ov, V.lo, V.hi);
+  if (glReady) paintGround(arr, w, hh);
+}
+function drawNet() {
+  const src = source(); if (!src) return;
+  const feats = [];
+  E.forEach((e, i) => { if (!src.allowed(i) || e[0] > e[1] && E.length > 2) return; const s = seg(i, hour, src); const c = ramp(HEAT, (s.mult - 1) / 1.2); feats.push({ type: "Feature", properties: { c: `rgb(${c})`, L: s.L, s: 100 * e[3] / Math.max(1, e[2]), u: s.u, m: s.mult }, geometry: { type: "LineString", coordinates: e[4] } }); });
+  map.getSource("net").setData({ type: "FeatureCollection", features: feats });
+  $("#ovLegend").innerHTML = `<div class="legendbar" style="background:linear-gradient(to right,${HEAT.map(c => `rgb(${c})`).join(",")})"></div><div class="legendlab"><span>×1.0</span><span>Perceived-effort multiplier per segment at ${String(Math.floor(hour)).padStart(2, "0")}:00 (hover)</span><span>×2.2</span></div>`;
+}
+
+/* ---------- 3D ---------- */
+let N = NW, CELL = RES;
+const CLIFF_M = 1.2, MAX_TREES = 60000, surf = "trees", treeSrc = "lidar", method = "new", exag = 1;
+const lerp3 = (stops, t) => { t = Math.min(Math.max(t, 0), 1) * (stops.length - 1); const i = Math.min(Math.floor(t), stops.length - 2), f = t - i; return [0, 1, 2].map(k => stops[i][k] * (1 - f) + stops[i + 1][k] * f); };
+const G2 = [[0.55, 0.53, 0.50], [0.70, 0.84, 0.56], [0.33, 0.62, 0.32], [0.10, 0.36, 0.20]];
+let renderer, scene, camera, controls, roofs, canopy, trunks, ground, groundTex, routeGroup, glReady = false, T3 = null;
+// copied from the deck's 3D viewer (index.html)
+/* Buildings: every roof cell is its own quad. Corners are averaged with neighbours on the same roof level, so pitched
+   roofs stay continuous, and height jumps above CLIFF_M become vertical walls. A small median removes lidar speckle
+   from roofs; thin tall features such as spires are left alone. Display only: the rasters are not changed. */
+function roofHeights(t, top) {
+  const NN = N * N, mask = new Uint8Array(NN), z = new Float32Array(NN), w = new Float32Array(9);
+  for (let k = 0; k < NN; k++) { const h = top[k] - t.dem[k]; mask[k] = h > 1 || (t.lc[k] === 2 && h > 0.3) ? 1 : 0; z[k] = top[k]; }
+  for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) {
+    const k = j * N + i; if (!mask[k]) continue;
+    let n = 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const q = k + dj * N + di; if (mask[q] && Math.abs(top[q] - top[k]) < 3) w[n++] = top[q]; }
+    if (n < 3) { if (n < 2) mask[k] = 0; continue; }
+    for (let a = 1; a < n; a++) { const x = w[a]; let b = a - 1; while (b >= 0 && w[b] > x) { w[b + 1] = w[b]; b--; } w[b + 1] = x; }
+    const m = w[n >> 1];
+    if (Math.abs(m - top[k]) < 2) z[k] = m;
+  }
+  return { mask, z };
+}
+function buildRoofs(t, top) {
+  const { mask, z } = roofHeights(t, top), base = t.base, W = CELL;
+  let cells = 0, walls = 0;
+  const side = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  const wallAt = (i, j, k, s) => { const ni = i + side[s][0], nj = j + side[s][1]; if (ni < 0 || nj < 0 || ni >= N || nj >= N) return 1; const n = nj * N + ni; return !mask[n] ? 1 : z[k] - z[n] > CLIFF_M ? 2 : 0; };
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const k = j * N + i; if (!mask[k]) continue; cells++; for (let s = 0; s < 4; s++) if (wallAt(i, j, k, s)) walls++; }
+  const quads = cells + walls, nv = quads * 4, pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint32Array(quads * 6);
+  const qCell = new Int32Array(quads), qWall = new Uint8Array(quads);
+  let v = 0, q = 0, nq = 0;
+  // corner (cx, cy) of cell k: mean of the cells touching it that sit on the same roof level
+  const corner = (k, cx, cy) => {
+    let sum = 0, n = 0;
+    for (let dj = -1; dj <= 0; dj++) for (let di = -1; di <= 0; di++) {
+      const ci = cx + di, cj = cy + dj; if (ci < 0 || cj < 0 || ci >= N || cj >= N) continue;
+      const m = cj * N + ci; if (mask[m] && Math.abs(z[m] - z[k]) <= CLIFF_M) { sum += z[m]; n++; }
+    }
+    return n ? sum / n : z[k];
+  };
+  const X = i => (i - N / 2) * W, Y = h => h - base;
+  // wall normal from the outline around the cell, not the cell's own edge, so stair steps on diagonal walls shade as one plane
+  let wnx = 0, wnz = 0;
+  const wallNormal = (i, j, k, s) => {
+    let gx = 0, gz = 0;
+    for (let dj = -3; dj <= 3; dj++) { const cj = j + dj; if (cj < 0 || cj >= N) continue;
+      for (let di = -3; di <= 3; di++) { const ci = i + di; if (ci < 0 || ci >= N) continue; const m = cj * N + ci; if (mask[m] && z[k] - z[m] <= CLIFF_M) { gx += di; gz += dj; } } }
+    const l = Math.hypot(gx, gz), ax = side[s][0], az = side[s][1];
+    if (l === 0 || -(gx * ax + gz * az) / l < 0.3) { wnx = ax; wnz = az; } else { wnx = -gx / l; wnz = -gz / l; }
+  };
+  const put = (x, y, zz, nx, ny, nz) => { const a = v * 3; pos[a] = x; pos[a + 1] = y; pos[a + 2] = zz; nor[a] = nx; nor[a + 1] = ny; nor[a + 2] = nz; v++; };
+  const tri = a => { idx[q++] = a; idx[q++] = a + 1; idx[q++] = a + 2; idx[q++] = a; idx[q++] = a + 2; idx[q++] = a + 3; };
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const k = j * N + i; if (!mask[k]) continue;
+    const a = corner(k, i, j), b = corner(k, i, j + 1), c = corner(k, i + 1, j + 1), d = corner(k, i + 1, j);
+    const nx = (a + b - c - d) / (2 * W), nz = (a + d - b - c) / (2 * W), l = 1 / Math.hypot(nx, 1, nz);
+    const a0 = v; put(X(i), Y(a), X(j), nx * l, l, nz * l); put(X(i), Y(b), X(j + 1), nx * l, l, nz * l); put(X(i + 1), Y(c), X(j + 1), nx * l, l, nz * l); put(X(i + 1), Y(d), X(j), nx * l, l, nz * l); tri(a0);
+    qCell[nq++] = k;
+    for (let s = 0; s < 4; s++) {
+      const kind = wallAt(i, j, k, s); if (!kind) continue;
+      const h0 = s === 0 ? d : s === 1 ? c : s === 2 ? b : a, h1 = s === 0 ? a : s === 1 ? d : s === 2 ? c : b;
+      const x0 = s === 0 || s === 1 ? i + 1 : i, y0 = s === 0 || s === 3 ? j : j + 1, x1 = s === 0 || s === 3 ? i : i + 1, y1 = s === 1 || s === 0 ? j : j + 1;
+      const n = kind === 2 ? (j + side[s][1]) * N + i + side[s][0] : -1;
+      // down to the neighbouring roof, or to just under the ground so the coarse ground mesh can't show a gap
+      const lo0 = kind === 2 ? h0 - (z[k] - z[n]) : t.dem[k] - 1, lo1 = kind === 2 ? h1 - (z[k] - z[n]) : t.dem[k] - 1;
+      wallNormal(i, j, k, s);
+      const a1 = v;
+      put(X(x0), Y(h0), X(y0), wnx, 0, wnz); put(X(x0), Y(lo0), X(y0), wnx, 0, wnz);
+      put(X(x1), Y(lo1), X(y1), wnx, 0, wnz); put(X(x1), Y(h1), X(y1), wnx, 0, wnz); tri(a1);
+      qWall[nq] = 1; qCell[nq++] = k;
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.BufferAttribute(nor, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3)); g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.userData = { qCell, qWall };
+  return g;
+}
+function paintRoofs(g, t, top, colorOf) {
+  const { qCell, qWall } = g.userData, col = g.attributes.color.array;
+  for (let q = 0, a = 0; q < qCell.length; q++, a += 12) {
+    const k = qCell[q], c = colorOf(k, top[k], t.dem[k]), r = c[0], gr = c[1], b = c[2];
+    const hi = qWall[q] ? 0.8 : 1, lo = qWall[q] ? 0.55 : 1;
+    col[a] = r * hi; col[a + 1] = gr * hi; col[a + 2] = b * hi; col[a + 3] = r * lo; col[a + 4] = gr * lo; col[a + 5] = b * lo;
+    col[a + 6] = r * lo; col[a + 7] = gr * lo; col[a + 8] = b * lo; col[a + 9] = r * hi; col[a + 10] = gr * hi; col[a + 11] = b * hi;
+  }
+  g.attributes.color.needsUpdate = true;
+}
+/* Trees: crown shape from the canopy raster, softened so it reads as foliage rather than pixels. Height and outline are
+   blurred, outline vertices slide onto the smoothed crown edge, and each crown has a rounded rim and underside reaching
+   down to at most 25% of tree height (SOLWEIG's trunk zone), with a trunk under each high point. Display only. */
+function blur3(a, passes) {
+  const b = new Float32Array(a.length);
+  for (let p = 0; p < passes; p++) {
+    for (let j = 0; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; b[k] = (a[k - 1] + a[k] + a[k + 1]) / 3; }
+    for (let j = 1; j < N - 1; j++) for (let i = 0; i < N; i++) { const k = j * N + i; a[k] = (b[k - N] + b[k] + b[k + N]) / 3; }
+  }
+  return a;
+}
+function placeTrees(t, top) {
+  trunks.count = 0; canopy.visible = false; trunks.instanceMatrix.needsUpdate = true;
+  if (surf !== "trees") return;
+  const key = treeSrc + method, cached = (t.treeCache ??= {})[key];
+  if (cached) {
+    canopy.geometry.dispose(); canopy.geometry = cached.geometry; canopy.visible = cached.visible;
+    trunks.instanceMatrix.array.set(cached.matrices); trunks.count = cached.count; trunks.instanceMatrix.needsUpdate = true;
+    return;
+  }
+  const src = (treeSrc === "lidar" && t.cdsmLidar) ? t.cdsmLidar : t.cdsm, sc = t.meta.cdsm_scale, NN = N * N, W = CELL;
+  const f = new Float32Array(NN), hb = new Float32Array(NN);
+  for (let k = 0; k < NN; k++) { const cz = src[k] * sc, on = cz > 2 && t.lc[k] !== 2 && t.lc[k] !== 7 && t.dem[k] + cz > top[k] + 0.5; f[k] = on ? 1 : 0; hb[k] = on ? cz : 0; }
+  blur3(f, 2); blur3(hb, 2);
+  const tree = new Uint8Array(NN), d = new Float32Array(NN), hz = new Float32Array(NN);
+  for (let k = 0; k < NN; k++) { const on = f[k] > 0.5 && t.lc[k] !== 2 && t.lc[k] !== 7; tree[k] = on ? 1 : 0; d[k] = on ? 1e9 : 0; if (f[k] > 0.01) hz[k] = hb[k] / f[k]; }
+  const D2 = Math.SQRT2;
+  for (let j = 1; j < N; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k - 1] + 1, d[k - N] + 1, d[k - N - 1] + D2, d[k - N + 1] + D2); }
+  for (let j = N - 2; j >= 0; j--) for (let i = N - 2; i > 0; i--) { const k = j * N + i; if (d[k]) d[k] = Math.min(d[k], d[k + 1] + 1, d[k + N] + 1, d[k + N + 1] + D2, d[k + N - 1] + D2); }
+  const comp = new Int32Array(NN).fill(-1), crownR = [], stack = [];
+  for (let k0 = 0; k0 < NN; k0++) {
+    if (!tree[k0] || comp[k0] >= 0) continue;
+    const id = crownR.length; let rmax = 1; comp[k0] = id; stack.push(k0);
+    while (stack.length) { const k = stack.pop(); if (d[k] > rmax) rmax = d[k]; const i = k % N;
+      for (const nb of [k - N, k + N, i > 0 ? k - 1 : -1, i < N - 1 ? k + 1 : -1]) if (nb >= 0 && nb < NN && tree[nb] && comp[nb] < 0) { comp[nb] = id; stack.push(nb); } }
+    crownR.push(rmax);
+  }
+  // one top and one underside vertex per tree cell, kept compact so large blocks don't need full-grid buffers
+  const vid = new Int32Array(NN).fill(-1); let nv = 0;
+  for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) { const k = j * N + i; if (tree[k]) vid[k] = nv++; }
+  const pos = new Float32Array(nv * 6), col = new Float32Array(nv * 6), under = new Float32Array(NN);
+  for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) {
+    const k = j * N + i; if (vid[k] < 0) continue;
+    const a = vid[k] * 3, b = (vid[k] + nv) * 3;
+    const h = hz[k], g = t.dem[k], R = Math.max(crownR[comp[k]] * W, 1.5), u = Math.min(1, Math.max(0, (d[k] * W - 1) / Math.max(R - 1, 0.5)));
+    const dome = Math.sqrt(1 - (1 - u) * (1 - u)), full = Math.min(0.75 * h, 0.8 + 1.1 * R), rim = g + h - 0.2 * full, up = rim + 0.2 * full * dome, low = rim - 0.8 * full * dome;
+    let x = i, z = j;
+    if (f[k] < 0.9) { const gx = (f[k + 1] - f[k - 1]) / 2, gz = (f[k + N] - f[k - N]) / 2, gl = Math.hypot(gx, gz); if (gl > 0.02) { const m = Math.max(-0.8, Math.min(0.8, (f[k] - 0.5) / gl)); x -= gx / gl * m; z -= gz / gl * m; } }
+    x = (x + 0.5 - N / 2) * W; z = (z + 0.5 - N / 2) * W; under[k] = low - g;
+    pos[a] = x; pos[a + 1] = up - t.base; pos[a + 2] = z; pos[b] = x; pos[b + 1] = low - t.base; pos[b + 2] = z;
+    const c = lerp3(G2, 0.35 + h / 30), sh = 0.72 + 0.28 * dome;
+    col[a] = c[0] * sh; col[a + 1] = c[1] * sh; col[a + 2] = c[2] * sh; col[b] = c[0] * 0.55; col[b + 1] = c[1] * 0.55; col[b + 2] = c[2] * 0.55;
+  }
+  const idx = [], tri = (p, q, r) => { idx.push(p, q, r, nv + p, nv + r, nv + q); };
+  for (let j = 1; j < N - 2; j++) for (let i = 1; i < N - 2; i++) {
+    const k = j * N + i, a = vid[k], b = vid[k + 1], c = vid[k + N], e = vid[k + N + 1], n = (a >= 0) + (b >= 0) + (c >= 0) + (e >= 0);
+    if (n === 4) { tri(a, c, b); tri(b, c, e); } else if (n === 3) { if (e < 0) tri(a, c, b); else if (c < 0) tri(a, e, b); else if (b < 0) tri(a, c, e); else tri(b, c, e); }
+  }
+  canopy.geometry.dispose();
+  const cg = new THREE.BufferGeometry();
+  cg.setAttribute("position", new THREE.BufferAttribute(pos, 3)); cg.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  if (idx.length) { cg.setIndex(new THREE.BufferAttribute(new Uint32Array(idx), 1)); cg.computeVertexNormals(); }
+  canopy.geometry = cg; canopy.visible = idx.length > 0;
+  const RW = 3, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), s3 = new THREE.Vector3();
+  let n = 0;
+  for (let j = RW; j < N - RW && n < MAX_TREES; j++) for (let i = RW; i < N - RW; i++) {
+    const k = j * N + i; if (!tree[k] || d[k] < 2) continue;
+    const h = hz[k]; if (h < 3) continue;
+    let peak = true, area = 0;
+    for (let dj = -RW; dj <= RW && peak; dj++) for (let di = -RW; di <= RW; di++) {
+      const hv = hz[k + dj * N + di];
+      if (hv > h || (hv === h && (dj < 0 || (dj === 0 && di < 0)))) { peak = false; break; }
+      if (hv > h * 0.6) area++;
+    }
+    if (!peak || area < 12) continue;
+    const g = t.dem[k], w = Math.min(Math.max(0.3, Math.sqrt(area) / 9), 0.9);
+    m4.compose(v.set((i + 0.5 - N / 2) * W, g - t.base, (j + 0.5 - N / 2) * W), q, s3.set(w, Math.min(under[k], 0.6 * h) + 0.5, w));
+    trunks.setMatrixAt(n++, m4);
+  }
+  trunks.count = n; trunks.instanceMatrix.needsUpdate = true;
+  t.treeCache[key] = { geometry: cg, visible: canopy.visible, matrices: trunks.instanceMatrix.array.slice(0, n * 16), count: n };
+}
+async function init3D() {
+  const host = $("#gl");
+  renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setClearColor(0x1b2028, 1); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); host.append(renderer.domElement);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  scene = new THREE.Scene(); const span = NW * RES;
+  camera = new THREE.PerspectiveCamera(42, 1, 1, span * 4); camera.position.set(span * 0.55, span * 0.45, span * 0.65);
+  controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.49;
+  scene.add(new THREE.HemisphereLight(0xdfe8f2, 0x2a2016, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff1dc, 1.5); sun.position.set(-span * 0.4, span * 0.8, span * 0.3); scene.add(sun);
+  T3 = { dsm: BASE.dsm, dem: BASE.dem, lc: BASE.lc, cdsm: await trees(grow), cdsmLidar: null, meta: { cdsm_scale: 0.2 } };
+  let s = 0; for (let i = 0; i < NN; i += 97) s += T3.dem[i]; T3.base = s / Math.ceil(NN / 97);
+  roofs = new THREE.Mesh(buildRoofs(T3, T3.dsm), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }));
+  paintRoofs(roofs.geometry, T3, T3.dsm, () => [0.82, 0.80, 0.76]);
+  canopy = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide })); canopy.frustumCulled = false;
+  trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.7, 1, 1, 7).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ color: 0x6b4f35 }), MAX_TREES); trunks.count = 0; trunks.frustumCulled = false;
+  const GN = Math.ceil((NW - 1) / 4) + 1, pos = new Float32Array(GN * GN * 3), uv = new Float32Array(GN * GN * 2), idx = new Uint32Array((GN - 1) * (GN - 1) * 6);
+  for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const v = j * GN + i, ci = Math.min(i * 4, NW - 1), cj = Math.min(j * 4, NH - 1); pos[v * 3] = (ci + 0.5 - NW / 2) * RES; pos[v * 3 + 1] = T3.dem[cj * NW + ci] - T3.base; pos[v * 3 + 2] = (cj + 0.5 - NH / 2) * RES; uv[v * 2] = (ci + 0.5) / NW; uv[v * 2 + 1] = (cj + 0.5) / NH; }
+  let q = 0; for (let j = 0; j < GN - 1; j++) for (let i = 0; i < GN - 1; i++) { const a = j * GN + i, b = a + 1, c = a + GN, d = c + 1; idx[q++] = a; idx[q++] = c; idx[q++] = b; idx[q++] = b; idx[q++] = c; idx[q++] = d; }
+  const gg = new THREE.BufferGeometry(); gg.setAttribute("position", new THREE.BufferAttribute(pos, 3)); gg.setAttribute("uv", new THREE.BufferAttribute(uv, 2)); gg.setIndex(new THREE.BufferAttribute(idx, 1)); gg.computeVertexNormals();
+  groundTex = new THREE.DataTexture(new Uint8Array(NN * 4).fill(200), NW, NH, THREE.RGBAFormat); groundTex.magFilter = THREE.NearestFilter; groundTex.needsUpdate = true;
+  ground = new THREE.Mesh(gg, new THREE.MeshStandardMaterial({ map: groundTex, roughness: 0.95 }));
+  routeGroup = new THREE.Group();
+  scene.add(ground, roofs, canopy, trunks, routeGroup);
+  placeTrees(T3, T3.dsm);
+  const resize = () => { const r = host.getBoundingClientRect(); if (!r.width) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(host); resize();
+  renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+  glReady = true; draw3DRoutes(); drawOverlay();
+}
+function paintGround(arr, w, h) {
+  const d = groundTex.image.data;
+  for (let k = 0; k < NN; k++) { const c = BASE.lc[k] === 7 ? [90, 140, 200] : BASE.lc[k] === 5 ? [150, 190, 120] : [190, 188, 182]; d[k * 4] = c[0]; d[k * 4 + 1] = c[1]; d[k * 4 + 2] = c[2]; d[k * 4 + 3] = 255; }
+  if (arr) {
+    const st = rampFor(ov), V = VAR[ov];
+    const off = w === NW ? [0, 0] : [live.corridor.window[0], live.corridor.window[1]];
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const x = arr[j * w + i]; if (!isFinite(x)) continue; const k = (j + off[0]) * NW + i + off[1], c = ramp(st, (x - V.lo) / (V.hi - V.lo)); d[k * 4] = c[0]; d[k * 4 + 1] = c[1]; d[k * 4 + 2] = c[2]; }
+  }
+  groundTex.needsUpdate = true;
+}
+function draw3DRoutes() {
+  routeGroup.clear(); if (!routes) return;
+  const [x0, y1] = A.ul, toLocal = (lon, lat) => { const p = proj(lon, lat); return [(p[0] - x0) / RES, (y1 - p[1]) / RES]; };
+  routes.forEach((r, i) => { if (!r) return; const P = [];
+    for (const j of r.path) for (const [lon, lat] of E[j][4]) { const [cx, cy] = toLocal(lon, lat), ci = Math.min(NW - 1, Math.max(0, Math.round(cx))), cj = Math.min(NH - 1, Math.max(0, Math.round(cy))); P.push(new THREE.Vector3((cx - NW / 2) * RES, BASE.dem[cj * NW + ci] - T3.base + 2.5 + i * 0.6, (cy - NH / 2) * RES)); }
+    if (P.length > 1) routeGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), Math.min(3000, P.length * 3), i === sel ? 6 : 4, 8), new THREE.MeshBasicMaterial({ color: RCOL[i], depthTest: false, transparent: true, opacity: i === sel ? 1 : 0.8 }))); });
+  // pins at the two ends, and frame the camera on the trip the first time it is drawn
+  const ends = [E[routes[sel].path[0]][0], E[routes[sel].path[routes[sel].path.length - 1]][1]].map(n => { const [cx, cy] = toLocal(nodes[n][0], nodes[n][1]); return new THREE.Vector3((cx - NW / 2) * RES, nodes[n][2] - T3.base, (cy - NH / 2) * RES); });
+  ends.forEach((v, k) => { const pin = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 80, 12).translate(0, 40, 0), new THREE.MeshBasicMaterial({ color: k ? 0xc0392b : 0xffffff, depthTest: false })); pin.position.copy(v); routeGroup.add(pin); });
+  routeGroup.children.forEach((m, j) => { m.renderOrder = 10 + j; });  // drawn over buildings, like a navigation app
+  const key = pts.join("-");
+  if (framed !== key) {
+    framed = key; const mid = ends[0].clone().add(ends[1]).multiplyScalar(0.5), span = Math.max(300, ends[0].distanceTo(ends[1]));
+    controls.target.copy(mid); camera.position.set(mid.x + span * 0.55, mid.y + span * 0.6, mid.z + span * 0.75); controls.update();
+  }
+}
+let framed = "";
+// lon/lat to the area's UTM grid (zone from the CRS string; spherical approximation is fine at block scale)
+const ZONE = +(A.crs.match(/269(\d\d)/) || [0, 10])[1];
+function proj(lon, lat) {
+  const a = 6378137, f = 1 / 298.257223563, k0 = 0.9996, e2 = f * (2 - f), ep2 = e2 / (1 - e2), r = Math.PI / 180, lon0 = (ZONE * 6 - 183) * r, phi = lat * r, lam = lon * r;
+  const Nn = a / Math.sqrt(1 - e2 * Math.sin(phi) ** 2), T = Math.tan(phi) ** 2, C = ep2 * Math.cos(phi) ** 2, Aa = Math.cos(phi) * (lam - lon0);
+  const M = a * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256) * phi - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * phi) + (15 * e2 * e2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * phi) - (35 * e2 ** 3 / 3072) * Math.sin(6 * phi));
+  const x = k0 * Nn * (Aa + (1 - T + C) * Aa ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ep2) * Aa ** 5 / 120) + 500000;
+  const y = k0 * (M + Nn * Math.tan(phi) * (Aa * Aa / 2 + (5 - T + 9 * C + 4 * C * C) * Aa ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ep2) * Aa ** 6 / 720));
+  return [x, y];
+}
+
+/* ---------- controls ---------- */
+const views = () => opts($("#viewSeg"), [["2d", "2D map"], ["3d", "3D"]], view, async k => { view = k; views(); $("#map").hidden = k !== "2d"; $("#gl").hidden = k !== "3d"; if (k === "3d" && !glReady) { status("Building the 3D model…", "busy"); await new Promise(r => setTimeout(r, 30)); await init3D(); computeRoutes(); } if (k === "2d") map.resize(); });
+views();
+const ovs = () => opts($("#ovSeg"), [["utci", "UTCI"], ["tmrt", "Tmrt"], ["shadow", "Shade"], ["svf", "Sky view"], ["net", "Segment effort"], ["none", "None"]], ov, k => { ov = k; ovs(); drawOverlay(); });
+ovs();
+$("#grow").innerHTML = A.growths.map(g => `<option value="${g.m}">+${g.m} m${g.m === 1 ? " (recommended)" : ""}${A.variants["g" + g.m] ? "" : " (live only)"} · ${g.tree_km2} km² of trees</option>`).join("");
+$("#grow").value = grow;
+const setHour = v => { hour = +v; $("#hourv").textContent = `${String(Math.floor(hour)).padStart(2, "0")}:${String(Math.round((hour % 1) * 60)).padStart(2, "0")}`; };
+setHour(14);
+let tmo;
+$("#hour").oninput = e => { setHour(e.target.value); clearTimeout(tmo); tmo = setTimeout(() => { computeRoutes(); drawOverlay(); $("#outH").value = Math.round(hour); renderOut(); }, 120); };
+$("#k").oninput = e => { K = +e.target.value; $("#kv").textContent = K.toFixed(2); computeRoutes(); if (ov === "net") drawNet(); };
+$("#grow").onchange = async e => { grow = +e.target.value; if (hasPre()) await edgesFor(tagOf()); if (glReady) { T3.cdsm = await trees(grow); T3.treeCache = {}; placeTrees(T3, T3.dsm); } computeRoutes(); drawOverlay(); renderIn(); renderOut(); };
+$("#date").onchange = () => { computeRoutes(); drawOverlay(); };
+$("#clear").onclick = () => { pts = []; drawPts(); computeRoutes(); };
+
+/* ---------- live server ---------- */
+const SERVER = "http://localhost:8000";
+async function checkServer() {
+  try { const r = await fetch(SERVER + "/api/health", { signal: AbortSignal.timeout(1500) }); server = r.ok; } catch (e) { server = false; }
+  $("#live").disabled = !server;
+  $("#live").title = server ? "" : "Start the local server to enable live runs (section 9).";
+}
+$("#live").onclick = async () => {
+  if (pts.length < 2) { status("Set a start and an end first.", "err"); return; }
+  const t0 = performance.now(), tick = setInterval(() => status(`Running SOLWEIG-light for this trip… ${((performance.now() - t0) / 1000).toFixed(0)} s (sky view, then each hour of the walk)`, "busy"), 1000);
+  $("#live").disabled = true;
+  try {
+    const r = await fetch(SERVER + "/api/route", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ origin: nodes[pts[0]].slice(0, 2), dest: nodes[pts[1]].slice(0, 2), date: $("#date").value, hour, grow_m: grow }) });
+    if (!r.ok) throw new Error((await r.json()).detail || r.status);
+    live = await r.json();
+    const c = live.corridor, [x0, y0] = c.ul, w = c.window[3] * RES, h = c.window[2] * RES;
+    live.cornersLL = [[x0, y0], [x0 + w, y0], [x0 + w, y0 - h], [x0, y0 - h]].map(([x, y]) => unproj(x, y));
+    map.getSource("corr").setData({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [...live.cornersLL, live.cornersLL[0]] } }] });
+    runs.unshift({ when: new Date().toLocaleTimeString(), date: live.date, hours: `${live.hours[0]}–${live.hours[live.hours.length - 1]}`, km2: c.pixels * RES * RES / 1e6, s: live.solweig_seconds, total: live.total_seconds, grow });
+    renderTiming(); computeRoutes(); drawOverlay(); renderOut(); renderMet();
+  } catch (e) { status("Live run failed: " + e.message, "err"); }
+  finally { clearInterval(tick); $("#live").disabled = !server; }
+};
+function unproj(x, y) {   // inverse of proj (UTM to lon/lat), iterated from a first guess
+  let lon = (ZONE * 6 - 183) + (x - 500000) / 75000, lat = y / 111200;
+  for (let i = 0; i < 6; i++) { const [px, py] = proj(lon, lat); lon -= (px - x) / (111320 * Math.cos(lat * Math.PI / 180)); lat -= (py - y) / 111200; }
+  return [lon, lat];
+}
+
+/* ---------- under the hood ---------- */
+const runs = [];
+function renderTiming() {
+  const rows = [[`Study area, ${A.date}`, `${fmt(NW * RES / 1000, 1)} × ${fmt(NH * RES / 1000, 1)} km at ${RES} m (${fmt(NN)} px)`, "0–23", A.timing ? `${fmt(A.timing.svf_s / 60, 1)} min sky view + ${fmt(A.timing.hours_s / 60, 1)} min for 24 h` : "precomputed"]];
+  for (const r of runs) rows.push([`Live ${r.when} (+${r.grow} m)`, `${fmt(r.km2, 2)} km² corridor`, r.hours, `${fmt(r.s)} s model, ${fmt(r.total)} s total`]);
+  $("#timing").innerHTML = `<thead><tr><th>Run</th><th>Area</th><th>Hours</th><th>Time</th></tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`;
+}
+renderTiming();
+let inK = "height", outK = "utci";
+async function renderIn() {
+  opts($("#inSeg"), [["height", "Building height"], ["dem", "Ground elevation"], ["trees", "Tree height"], ["lc", "Land cover"]], inK, k => { inK = k; renderIn(); });
+  const cv = $("#inCanvas"); cv.width = NW; cv.height = NH; const img = new ImageData(NW, NH); let lo = 0, hi = 1, v = "svf", lab = "";
+  if (inK === "lc") { const C = { 1: [142, 142, 142], 2: [192, 57, 43], 5: [155, 203, 106], 6: [216, 185, 138], 7: [59, 127, 196] }; for (let k = 0; k < NN; k++) { const c = C[BASE.lc[k]] || [0, 0, 0]; img.data.set([...c, 255], k * 4); } cv.getContext("2d").putImageData(img, 0, 0); $("#inLegend").innerHTML = `<p class="small">${Object.entries({ Paved: "#8e8e8e", Building: "#c0392b", Grass: "#9bcb6a", "Bare soil": "#d8b98a", Water: "#3b7fc4" }).map(([n, c]) => `<span class="sw" style="background:${c}"></span>${n}`).join(" &nbsp; ")}. From Seattle's 1 m land cover (UrbanWatch 2017).</p>`; return; }
+  let a;
+  if (inK === "height") { a = BASE.dsm.map((z, k) => z - BASE.dem[k]); lo = 0; hi = 120; lab = "Building height above ground (m) — Building_DSM.tif minus DEM"; }
+  if (inK === "dem") { a = BASE.dem; lo = Math.min(...BASE.dem.filter((_, i) => i % 50 === 0)); hi = Math.max(...BASE.dem.filter((_, i) => i % 50 === 0)); lab = "Ground elevation (m) — DEM.tif"; }
+  if (inK === "trees") { const t = await trees(grow); a = Float32Array.from(t, x => x * 0.2); lo = 0; hi = 35; lab = `Tree height (m) — Trees.tif from CDSM_lidar, crowns +${grow} m`; }
+  const st = inK === "trees" ? [[245, 245, 238], [150, 200, 120], [40, 110, 50], [10, 60, 30]] : VIR;
+  for (let k = 0; k < NN; k++) { const c = ramp(st, (a[k] - lo) / (hi - lo)); img.data[k * 4] = c[0]; img.data[k * 4 + 1] = c[1]; img.data[k * 4 + 2] = c[2]; img.data[k * 4 + 3] = 255; }
+  cv.getContext("2d").putImageData(img, 0, 0);
+  $("#inLegend").innerHTML = `<div class="legendbar" style="background:linear-gradient(to right,${st.map(c => `rgb(${c})`).join(",")})"></div><div class="legendlab"><span>${fmt(lo)}</span><span>${lab}</span><span>${fmt(hi)}</span></div>`;
+}
+async function renderOut() {
+  opts($("#outSeg"), [["utci", "UTCI"], ["tmrt", "Tmrt"], ["shadow", "Shade"], ["svf", "Sky view factor"]], outK, k => { outK = k; renderOut(); });
+  const h = +$("#outH").value; $("#outHv").textContent = `${String(h).padStart(2, "0")}:00`;
+  const V = VAR[outK], cv = $("#outCanvas");
+  const li = live && live.date === $("#date").value && live.grow_m === grow ? live.hours.indexOf(h) : -1;
+  let arr, w = NW, hh = NH, where = "study area";
+  if (li >= 0 || (live && outK === "svf")) { arr = liveLayer(outK, Math.max(0, li)); w = live.corridor.window[3]; hh = live.corridor.window[2]; where = "live corridor"; }
+  else if (hasPre() && $("#date").value === A.date) arr = await layer(tagOf(), outK, h);
+  if (!arr) { cv.width = 10; cv.height = 10; $("#outStats").textContent = `No output for this hour, date and crown growth.`; return; }
+  cv.width = w; cv.height = hh; cv.getContext("2d").putImageData(colorize(arr, outK, V.lo, V.hi, w, hh), 0, 0); legend($("#outLegend"), outK, V.lo, V.hi);
+  let s = 0, n = 0, mn = Infinity, mx = -Infinity; for (const x of arr) if (isFinite(x)) { s += x; n++; if (x < mn) mn = x; if (x > mx) mx = x; }
+  $("#outStats").textContent = `${where}: mean ${fmt(s / n, 2)}, min ${fmt(mn, 2)}, max ${fmt(mx, 2)} over ${fmt(n)} pixels. Buildings are blank: SOLWEIG models the ground.`;
+}
+$("#outH").oninput = renderOut;
+function renderMet() {
+  const M = live && live.date === $("#date").value ? live.met : A.met, label = live && live.date === $("#date").value ? `live run, ${live.date}` : A.date;
+  const charts = [["Tair", "Air temperature (°C)"], ["RH", "Relative humidity (%)"], ["kdown", "Global solar radiation (W/m²)"], ["U", "Wind speed (m/s)"]];
+  $("#metCharts").innerHTML = charts.map(([k, lab]) => { const xs = M.map(r => r.it), ys = M.map(r => r[k]), lo = Math.min(0, ...ys), hi = Math.max(...ys) * 1.1 || 1, Wd = 300, Hh = 130, X = x => 30 + (Wd - 40) * (x / 23), Y = y => 10 + (Hh - 35) * (1 - (y - lo) / (hi - lo));
+    return `<div class="chart"><svg viewBox="0 0 ${Wd} ${Hh}"><text x="30" y="9">${lab}</text><line x1="30" x2="${Wd - 10}" y1="${Y(lo)}" y2="${Y(lo)}" stroke="#999"/><text x="26" y="${Y(hi) + 4}" text-anchor="end">${fmt(hi)}</text><text x="26" y="${Y(lo) + 4}" text-anchor="end">${fmt(lo)}</text>${[0, 6, 12, 18, 23].map(h => `<text x="${X(h)}" y="${Hh - 6}" text-anchor="middle">${h}h</text>`).join("")}<path d="${xs.map((x, i) => (i ? "L" : "M") + X(x).toFixed(1) + "," + Y(ys[i]).toFixed(1)).join("")}" fill="none" stroke="#2a78d6" stroke-width="2"/>${xs.map((x, i) => `<circle cx="${X(x)}" cy="${Y(ys[i])}" r="3" fill="#2a78d6"><title>${x}:00 ${ys[i]}</title></circle>`).join("")}</svg></div>`; }).join("");
+  $("#metNote").textContent = `Source: Open-Meteo (ERA5 reanalysis for past dates, forecast for recent and coming days), ${label}. ERA5 is a ~25 km model grid, so it smooths city extremes: on 2021-06-28 it peaks at ${fmt(Math.max(...A.met.map(r => r.Tair)), 1)} °C while Seattle's official high was about 42 °C.`;
+}
+renderMet();
+const ASSUME = [
+  ["Walking speed", "Tobler's hiking function: v = 6·exp(−3.5·|S + 0.05|) km/h, S = rise/run (5.0 km/h on the flat)", "Tobler (1993)", false],
+  ["Heat weighting", "Perceived time = walking time × (1 + k·max(0, UTCI − 26 °C)), k = 0.05 per °C by default (slider)", "Form and k chosen for this prototype; 26 °C is the top of UTCI's “no thermal stress” band", true],
+  ["“Feels like” minutes", "Sum of perceived time along the route", "Follows from the line above", true],
+  ["Strong heat stress", "UTCI ≥ 32 °C", "UTCI assessment scale (Bröde et al. 2012)", false],
+  ["Shaded", "Share of the route in shade: 1 − SOLWEIG’s shadow value (which is 1 in full sun, 0 in shade), weighted by length; the profile marks stretches more than half shaded", "Display threshold chosen", true],
+  ["Time dependence", "Each segment costed at the clock time you would reach it, interpolated between hourly model outputs", "Standard time-dependent shortest path", false],
+  ["Corridor", "Paths within max(100 m, 15% of the route length) of the shortest walking route", "Chosen so detours of a block or two stay inside while keeping live runs small", true],
+  ["Shade margin", "100 m modelled around the corridor (a 60 m building's shadow at 30° sun)", "Chosen; longer low-sun shadows from towers beyond it are missed", true],
+  ["Hours modelled live", "Departure hour and the next hour", "Walks across the 2 km area take well under an hour", true],
+  ["Resolution", "2 m (1 m rasters aggregated: roofs and crowns by maximum, ground by mean)", "Chosen for speed: 1 m is ~4× slower", true],
+  ["Tree crown growth", "0–3 m added around every lidar crown; new edge cells take 85% of the neighbouring height", "Experimental, see section 7", true],
+  ["Trunk zone", "Crowns start at 25% of tree height", "SOLWEIG default", false],
+  ["Weather", "Open-Meteo hourly ERA5 / forecast; wind floored at 0.5 m/s", "Floor chosen to avoid calm-air artefacts in UTCI", true],
+];
+$("#assume").innerHTML = `<thead><tr><th>What</th><th>Formula or value</th><th>Source</th></tr></thead><tbody>${ASSUME.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[3] ? "<b>ASSUMPTION</b>: " : ""}${r[2]}</td></tr>`).join("")}</tbody>`;
+$("#aCorr").textContent = "max(100 m, 15% of its length)"; $("#aBuf").textContent = "100 m";
+$("#liveHelp").innerHTML = `<p>GitHub Pages can only serve files, so live runs need a small server on this computer. When it is running, this page finds it automatically and enables <b>Run SOLWEIG for this trip</b>; otherwise it uses the precomputed day.</p><pre style="background:var(--soft);padding:8px;overflow-x:auto">cd "D:\\City_Boundary (1)\\routing"
+%USERPROFILE%\\miniforge3\\envs\\solweig-light\\python.exe server.py</pre><p>A live run crops the study area to the trip's corridor, fetches that date's weather, and runs SOLWEIG-light for the walk's hours only. Any date works for weather; the buildings and trees are the 2021 lidar.</p>`;
+fetch("data/route/validation.json").then(r => r.ok ? r.json() : null).then(v => { if (v) renderValidation(v); else $("#valid").textContent = "Validation results not generated yet."; }).catch(() => { $("#valid").textContent = "Validation results not generated yet."; });
+function renderValidation(v) { $("#valid").innerHTML = v.html; if (v.grow_html) $("#grow7").innerHTML = v.grow_html; }
+
+/* ---------- start ---------- */
+if (hasPre()) await edgesFor(tagOf());
+await checkServer(); setInterval(checkServer, 30000);
+renderIn(); renderOut(); drawOverlay();
+status(`Precomputed day loaded: ${A.date}. Click the map to set a start and an end.${server ? " Local server connected: live runs available." : ""}`);
+</script>
+</html>

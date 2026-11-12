@@ -801,6 +801,46 @@ img.fig { width: 100%; border: 1px solid var(--line); }
   </div>
 </section>
 
+<section class="slide" id="part5" data-title="Part 5: Cool routes prototype" style="justify-content:center">
+  <h1>Cool routes: walking by perceived effort</h1>
+  <p class="sub">A first prototype that runs SOLWEIG on our Seattle rasters and routes around heat and hills</p>
+  <p><a href="route.html" style="font-size:20px">Open the prototype →</a></p>
+</section>
+
+<section class="slide" data-title="Cool routes: how it works">
+  <h2>How it works</h2>
+  <ol>
+    <li><b>Study area:</b> downtown Seattle to Capitol Hill, 2 × 2 km of walking paths (4,766 intersections from OpenStreetMap) inside a 2.4 km model area, so shade from buildings just outside still counts.</li>
+    <li><b>SOLWEIG-light</b> on our DSM, DEM, lidar canopy and land cover at 2 m: sky view, then hour-by-hour shadows, mean radiant temperature (Tmrt) and UTCI.</li>
+    <li><b>Weather</b> for any date from Open-Meteo. The default day is the June 2021 heat dome.</li>
+    <li><b>Every path segment</b> gets its hourly UTCI and shade, and the browser finds three routes: shortest, fastest (slope-aware, Tobler's walking speed) and least perceived effort (slope and heat).</li>
+    <li><b>Live mode:</b> a small local server crops the model to a corridor around the shortest route and runs only the hours of the walk, reusing the precomputed sky view.</li>
+    <li><b>Tree crowns</b> can be grown 0–3 m; +1 m is the default because NAIP shows the first metre around lidar crowns is mostly vegetation.</li>
+  </ol>
+</section>
+
+<section class="slide" data-title="Cool routes: speed and checks">
+  <h2>Speed and credibility</h2>
+  <div class="two">
+    <div><h3>Run times (16 threads, laptop)</h3><div class="tw"><table>
+      <thead><tr><th>Run</th><th class="n">Time</th></tr></thead><tbody>
+      <tr><td>Study area, 24 hours (2.4 km at 2 m)</td><td class="n">43 min</td></tr>
+      <tr><td>&nbsp;&nbsp;of which sky view (geometry, done once)</td><td class="n">16 min</td></tr>
+      <tr><td>Live trip, 0.5 km (2 hours modelled)</td><td class="n">21 s</td></tr>
+      <tr><td>Live trip, 1.1 km</td><td class="n">2.4 min</td></tr>
+      <tr><td>Live trip, 1.5–1.8 km diagonal</td><td class="n">~5 min</td></tr>
+      </tbody></table></div>
+      <p class="small">Live runs reuse the precomputed sky view and model only a corridor around the shortest route, for the departure hour and the next. They agree with the precomputed day to about 0.1 °C UTCI. Long diagonal trips still need a box covering half the area; splitting it along the route is the next speed-up.</p></div>
+    <div><h3>Validation</h3><ul>
+      <li>Shadows agree with an independent ray cast on 92–97% of ground pixels.</li>
+      <li>UTCI matches pythermalcomfort to within 0.05 °C.</li>
+      <li>Midday Tmrt about 70 °C in sun and 43–45 °C in shade; sky view 0.32 in a tower canyon, 0.76 in Cal Anderson Park.</li>
+      <li>Lidar crowns look about 1 m too narrow: the first metre around them is mostly vegetated in NAIP, the second is not.</li>
+    </ul></div>
+  </div>
+  <p class="small">Every formula and parameter, which ones I chose, and all generated rasters are under “Under the hood” on the prototype page.</p>
+</section>
+
 </main>
 
 <div class="tip" id="tip"></div>
@@ -873,6 +913,7 @@ setCount(0);
 if (location.hash === "#part2") addEventListener("load", () => go(slides.indexOf($("#part2"))));
 if (location.hash === "#part3") addEventListener("load", () => go(slides.indexOf($("#part3"))));
 if (location.hash === "#part4") addEventListener("load", () => go(slides.indexOf($("#part4"))));
+if (location.hash === "#part5") addEventListener("load", () => go(slides.indexOf($("#part5"))));
 
 /* tables */
 const gridTable = (id, cities) => { $(id).innerHTML = `<thead><tr><th>City</th><th class="n">Grid (pixels)</th><th class="n">Area (km²)</th><th>EPSG</th><th>Roof lidar</th><th class="n">Height cap</th></tr></thead><tbody>${cities.map(c => `<tr><td>${c.name}</td><td class="n">${c.dims}</td><td class="n">${fmt(c.area)}</td><td>${c.epsg}</td><td>${c.lidar}</td><td class="n">${c.cap} m</td></tr>`).join("")}<tr><td><b>Total</b></td><td></td><td class="n"><b>${fmt(cities.reduce((a, c) => a + c.area, 0))}</b></td><td colspan="3"></td></tr></tbody>`; };

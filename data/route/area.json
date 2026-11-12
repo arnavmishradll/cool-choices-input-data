@@ -1,0 +1,388 @@
+{
+ "res_m": 2.0,
+ "width": 1200,
+ "height": 1200,
+ "zmin": -2.0,
+ "zscale": 0.1,
+ "crs": "EPSG:26910",
+ "ul": [
+  549526.0,
+  5274820.0
+ ],
+ "corners": [
+  [
+   -122.340835,
+   47.624889
+  ],
+  [
+   -122.308895,
+   47.624701
+  ],
+  [
+   -122.30918,
+   47.603108
+  ],
+  [
+   -122.341107,
+   47.603295
+  ]
+ ],
+ "date": "2021-06-28",
+ "met_source": "https://archive-api.open-meteo.com/v1/archive",
+ "met": [
+  {
+   "it": 0.0,
+   "Tair": 24.4,
+   "RH": 61.0,
+   "U": 3.3,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 1.0,
+   "Tair": 23.5,
+   "RH": 64.0,
+   "U": 3.2,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 2.0,
+   "Tair": 22.8,
+   "RH": 66.0,
+   "U": 3.24,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 3.0,
+   "Tair": 22.1,
+   "RH": 69.0,
+   "U": 3.28,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 4.0,
+   "Tair": 21.8,
+   "RH": 72.0,
+   "U": 2.86,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 5.0,
+   "Tair": 21.3,
+   "RH": 74.0,
+   "U": 2.01,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 6.0,
+   "Tair": 21.1,
+   "RH": 72.0,
+   "U": 2.73,
+   "kdown": 16.0,
+   "kdiff": 8.0,
+   "kdir": 126.0
+  },
+  {
+   "it": 7.0,
+   "Tair": 23.1,
+   "RH": 62.0,
+   "U": 3.32,
+   "kdown": 119.0,
+   "kdiff": 38.0,
+   "kdir": 457.0
+  },
+  {
+   "it": 8.0,
+   "Tair": 26.4,
+   "RH": 51.0,
+   "U": 3.71,
+   "kdown": 274.0,
+   "kdiff": 57.0,
+   "kdir": 641.7
+  },
+  {
+   "it": 9.0,
+   "Tair": 29.6,
+   "RH": 46.0,
+   "U": 4.11,
+   "kdown": 441.0,
+   "kdiff": 68.0,
+   "kdir": 752.2
+  },
+  {
+   "it": 10.0,
+   "Tair": 33.1,
+   "RH": 41.0,
+   "U": 4.3,
+   "kdown": 600.0,
+   "kdiff": 76.0,
+   "kdir": 819.1
+  },
+  {
+   "it": 11.0,
+   "Tair": 35.7,
+   "RH": 35.0,
+   "U": 4.54,
+   "kdown": 737.0,
+   "kdiff": 82.0,
+   "kdir": 862.1
+  },
+  {
+   "it": 12.0,
+   "Tair": 36.5,
+   "RH": 34.0,
+   "U": 4.56,
+   "kdown": 838.0,
+   "kdiff": 85.0,
+   "kdir": 888.0
+  },
+  {
+   "it": 13.0,
+   "Tair": 36.7,
+   "RH": 34.0,
+   "U": 5.92,
+   "kdown": 891.0,
+   "kdiff": 87.0,
+   "kdir": 895.1
+  },
+  {
+   "it": 14.0,
+   "Tair": 37.4,
+   "RH": 33.0,
+   "U": 6.74,
+   "kdown": 902.0,
+   "kdiff": 87.0,
+   "kdir": 898.4
+  },
+  {
+   "it": 15.0,
+   "Tair": 37.9,
+   "RH": 31.0,
+   "U": 6.64,
+   "kdown": 863.0,
+   "kdiff": 86.0,
+   "kdir": 888.9
+  },
+  {
+   "it": 16.0,
+   "Tair": 37.7,
+   "RH": 30.0,
+   "U": 6.4,
+   "kdown": 781.0,
+   "kdiff": 83.0,
+   "kdir": 871.1
+  },
+  {
+   "it": 17.0,
+   "Tair": 36.5,
+   "RH": 32.0,
+   "U": 5.65,
+   "kdown": 659.0,
+   "kdiff": 78.0,
+   "kdir": 837.4
+  },
+  {
+   "it": 18.0,
+   "Tair": 35.6,
+   "RH": 35.0,
+   "U": 5.29,
+   "kdown": 506.0,
+   "kdiff": 72.0,
+   "kdir": 776.6
+  },
+  {
+   "it": 19.0,
+   "Tair": 34.6,
+   "RH": 39.0,
+   "U": 4.57,
+   "kdown": 342.0,
+   "kdiff": 62.0,
+   "kdir": 690.2
+  },
+  {
+   "it": 20.0,
+   "Tair": 32.2,
+   "RH": 44.0,
+   "U": 4.72,
+   "kdown": 180.0,
+   "kdiff": 47.0,
+   "kdir": 543.5
+  },
+  {
+   "it": 21.0,
+   "Tair": 30.1,
+   "RH": 48.0,
+   "U": 3.61,
+   "kdown": 48.0,
+   "kdiff": 19.0,
+   "kdir": 302.7
+  },
+  {
+   "it": 22.0,
+   "Tair": 28.3,
+   "RH": 51.0,
+   "U": 2.91,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 23.0,
+   "Tair": 26.9,
+   "RH": 53.0,
+   "U": 3.42,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  }
+ ],
+ "quant": {
+  "utci": [
+   0.0,
+   0.25
+  ],
+  "tmrt": [
+   0.0,
+   0.4
+  ],
+  "shadow": [
+   0.0,
+   0.004
+  ]
+ },
+ "files": {
+  "utci": [
+   "utci_g1_00.png",
+   "utci_g1_03.png",
+   "utci_g1_06.png",
+   "utci_g1_09.png",
+   "utci_g1_12.png",
+   "utci_g1_15.png",
+   "utci_g1_18.png",
+   "utci_g1_21.png"
+  ],
+  "tmrt": [
+   "tmrt_g1_00.png",
+   "tmrt_g1_03.png",
+   "tmrt_g1_06.png",
+   "tmrt_g1_09.png",
+   "tmrt_g1_12.png",
+   "tmrt_g1_15.png",
+   "tmrt_g1_18.png",
+   "tmrt_g1_21.png"
+  ],
+  "shadow": [
+   "shadow_g1_00.png",
+   "shadow_g1_03.png",
+   "shadow_g1_06.png",
+   "shadow_g1_09.png",
+   "shadow_g1_12.png",
+   "shadow_g1_15.png",
+   "shadow_g1_18.png",
+   "shadow_g1_21.png"
+  ]
+ },
+ "growths": [
+  {
+   "m": 0,
+   "tree_km2": 0.596
+  },
+  {
+   "m": 1,
+   "tree_km2": 0.791
+  },
+  {
+   "m": 2,
+   "tree_km2": 0.953
+  },
+  {
+   "m": 3,
+   "tree_km2": 1.097
+  }
+ ],
+ "tag": "g1",
+ "hours": 24,
+ "variants": {
+  "g0": {
+   "utci": [
+    "utci_g0_00.png",
+    "utci_g0_03.png",
+    "utci_g0_06.png",
+    "utci_g0_09.png",
+    "utci_g0_12.png",
+    "utci_g0_15.png",
+    "utci_g0_18.png",
+    "utci_g0_21.png"
+   ],
+   "tmrt": [
+    "tmrt_g0_00.png",
+    "tmrt_g0_03.png",
+    "tmrt_g0_06.png",
+    "tmrt_g0_09.png",
+    "tmrt_g0_12.png",
+    "tmrt_g0_15.png",
+    "tmrt_g0_18.png",
+    "tmrt_g0_21.png"
+   ],
+   "shadow": [
+    "shadow_g0_00.png",
+    "shadow_g0_03.png",
+    "shadow_g0_06.png",
+    "shadow_g0_09.png",
+    "shadow_g0_12.png",
+    "shadow_g0_15.png",
+    "shadow_g0_18.png",
+    "shadow_g0_21.png"
+   ]
+  },
+  "g1": {
+   "utci": [
+    "utci_g1_00.png",
+    "utci_g1_03.png",
+    "utci_g1_06.png",
+    "utci_g1_09.png",
+    "utci_g1_12.png",
+    "utci_g1_15.png",
+    "utci_g1_18.png",
+    "utci_g1_21.png"
+   ],
+   "tmrt": [
+    "tmrt_g1_00.png",
+    "tmrt_g1_03.png",
+    "tmrt_g1_06.png",
+    "tmrt_g1_09.png",
+    "tmrt_g1_12.png",
+    "tmrt_g1_15.png",
+    "tmrt_g1_18.png",
+    "tmrt_g1_21.png"
+   ],
+   "shadow": [
+    "shadow_g1_00.png",
+    "shadow_g1_03.png",
+    "shadow_g1_06.png",
+    "shadow_g1_09.png",
+    "shadow_g1_12.png",
+    "shadow_g1_15.png",
+    "shadow_g1_18.png",
+    "shadow_g1_21.png"
+   ]
+  }
+ },
+ "timing": {
+  "svf_s": 970,
+  "hours_s": 1604,
+  "threads": 16,
+  "machine": "Intel Core Ultra 7 155H, 16 GB"
+ }
+}
