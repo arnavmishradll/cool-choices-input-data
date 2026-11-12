@@ -53,6 +53,7 @@ canvas.ras { width: 100%; height: auto; image-rendering: pixelated; border: 1px 
 code { font-size: 12.5px; background: var(--soft); padding: 1px 4px; }
 ol li, ul li { margin-bottom: 4px; }
 .runpanel { border: 1px solid var(--line); border-left: 4px solid var(--s2); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: #fff; }
+.runpanel[hidden] { display: none; }
 .runpanel.done { border-left-color: var(--s3); } .runpanel.fail { border-left-color: #c0392b; }
 .rp-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .rp-head .grow { flex: 1; }
@@ -195,7 +196,7 @@ function interp(arr, hours, t) {
   return arr[arr.length - 1];
 }
 function source() {   // per-edge hourly arrays: live run if there is one for this date and growth, else the precomputed day
-  if (live && live.date === $("#date").value && live.grow_m === grow) return { hours: live.hours, get: (v, i) => live.edges[v][i], allowed: i => live.edges.utci[i] !== undefined, tag: "live" };
+  if (live && live.date === $("#date").value && live.grow_m === grow) return { hours: live.hours, get: (v, i) => live.edges[v === "shadow" ? "shade" : v][i], allowed: i => live.edges.utci[i] !== undefined, tag: "live" };
   if (!hasPre() || $("#date").value !== A.date) return null;
   const d = edgeCache[tagOf()], hrs = [...Array(A.hours).keys()];
   return d ? { hours: hrs, get: (v, i) => d[v][i], allowed: () => true, tag: "pre" } : null;
