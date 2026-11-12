@@ -627,6 +627,180 @@ img.fig { width: 100%; border: 1px solid var(--line); }
   <div class="tw"><table id="t_srcTable"></table></div>
 </section>
 
+<section class="slide" id="part4" data-title="Part 4: Land cover" style="justify-content:center">
+  <h1>Land cover: UrbanWatch vs Dynamic World</h1>
+  <p class="sub">How old is our 1 m land cover, can a current 10 m product replace it, and can the two be combined?</p>
+  <p>All 13 cities</p>
+</section>
+
+<section class="slide" data-title="Land cover: the question">
+  <h2>The question</h2>
+  <p>The delivered land cover is mostly UrbanWatch: 1 m and detailed, but mapped from 2014–17 photos, so it is 8–11 years old. Google's Dynamic World is updated every few days from Sentinel-2, but at 10 m. Which should SOLWEIG use, or can they work together?</p>
+  <div class="tw"><table>
+    <thead><tr><th></th><th>UrbanWatch</th><th>Dynamic World</th></tr></thead>
+    <tbody>
+      <tr><td>Pixel size</td><td>1 m</td><td>10 m</td></tr>
+      <tr><td>Made from</td><td>NAIP aerial photos (1 m, 4 bands)</td><td>Sentinel-2 satellite images</td></tr>
+      <tr><td>Dates</td><td>One snapshot per city: 2014 (LA, SF), 2016 (Dallas), 2017 (the rest)</td><td>Every clear image since mid-2015, every 2–5 days</td></tr>
+      <tr><td>Classes</td><td>building, road, parking, tree, grass/shrub, agriculture, water, barren</td><td>water, trees, grass, flooded vegetation, crops, shrub, built, bare, snow, each with a probability</td></tr>
+      <tr><td>Coverage</td><td>Mostly city limits (20–54% of our grids)</td><td>Global</td></tr>
+    </tbody></table></div>
+  <p class="small">Other references: NOAA C-CAP 1 m 2020 (Houston's base) and ESA WorldCover 2021 at 10 m (Tucson, Boulder, Austin). For SOLWEIG the land cover needs paved, building, grass, bare soil and water; trees come from the canopy raster, so built vs green matters most.</p>
+</section>
+
+<section class="slide" data-title="Land cover: method">
+  <h2>Method</h2>
+  <ol>
+    <li><b>Dynamic World composites:</b> for each city, the mean class probabilities over every clear Sentinel-2 view in the reference year (the year of the 1 m source), 2024 and 2025, at 10 m on each city's own grid.</li>
+    <li><b>Five shared classes:</b> built (building + paved), tree, low vegetation, bare, water.</li>
+    <li><b>10 m reference:</b> the share of each class from the 1 m source in every 10 m cell, plus the share covered by current Overture footprints.</li>
+    <li><b>Same-year test:</b> Dynamic World vs the 1 m source in the same year. No time gap, so disagreement is the cost of 10 m pixels and the model, not change.</li>
+    <li><b>Change test:</b> Dynamic World's reference year vs 2024 and 2025. A cell counts as changed only if both recent years agree on the new class and its probability rose by at least 15 points.</li>
+    <li><b>Photo check:</b> about 150 cells flagged "to built", 150 "to vegetation" and 300 unchanged per city, compared in NAIP photos from near the reference year and the newest year.</li>
+    <li><b>Combination:</b> update the 1 m map only inside flagged cells, pixel by pixel from newer 1 m evidence where it exists.</li>
+  </ol>
+  <p class="small">Code: landcover_compare/ (dw_download.py, reference.py, compare.py, validate_naip.py, fuse.py, figures.py). Dynamic World came from Google Earth Engine.</p>
+</section>
+
+<section class="slide" data-title="Land cover: same-year agreement">
+  <h2>Same year: how often does Dynamic World agree with the 1 m map?</h2>
+  <p>Share of 10 m cells where Dynamic World's class matches the 1 m map's majority class, in the same year. "Pure" cells are at least 80% one class; "mixed" cells hold several surfaces, like a roof, a yard and a street tree.</p>
+  <div class="opts" id="lc_accLegend"></div>
+  <div class="chart"><svg id="lc_accChart"></svg></div>
+  <div class="tw"><table id="lc_accTable"></table></div>
+  <p class="small" id="lc_accNote"></p>
+</section>
+
+<section class="slide" data-title="Land cover: confusion by city">
+  <h2>Where the disagreement goes (interactive)</h2>
+  <p class="sub">Rows: the 1 m map's class. Columns: Dynamic World's class, same year. Each row adds up to 100%. Darker = more cells.</p>
+  <div class="opts" id="lc_cmTabs"></div>
+  <div class="two">
+    <div class="tw"><table id="lc_cmTable"></table></div>
+    <div class="tw"><table id="lc_paTable"></table><p class="small">Found = share of the 1 m map's cells of a class that Dynamic World also calls that class (producer's accuracy). Right = share of Dynamic World's cells of a class that really are that class (user's accuracy).</p></div>
+  </div>
+  <p class="small" id="lc_cmNote"></p>
+</section>
+
+<section class="slide" data-title="Land cover: area by class">
+  <h2>How much of each class? (interactive)</h2>
+  <p>Area of each class over the same cells: from the 1 m map, from Dynamic World's labels (each 10 m cell gets one class), and from its probabilities (each cell split by class probability).</p>
+  <div class="opts" id="lc_areaTabs"></div>
+  <div class="opts" id="lc_areaLegend"></div>
+  <div class="chart"><svg id="lc_areaChart"></svg></div>
+  <p class="small" id="lc_areaNote"></p>
+</section>
+
+<section class="slide" data-title="Land cover: probabilities">
+  <h2>Dynamic World's probabilities are better than its labels</h2>
+  <p>Its built probability, compared with the built share of each 10 m cell in the 1 m map. It tracks the city total well but misses individual cells by 20–35 points, so it is good for totals, not for pixels.</p>
+  <div class="tw"><table id="lc_fitTable"></table></div>
+  <p class="small">Correlation and mean error are per 10 m cell. "Calibrated" fits a straight line from probability to 1 m built share for each city.</p>
+</section>
+
+<section class="slide" data-title="Land cover: how much changed">
+  <h2>Change since the 1 m map: how much is real?</h2>
+  <p>Share of each grid that changed class. "Changed" needs 2024 and 2025 to agree on the new class with a 15-point rise in probability. "2025 only" is the naive comparison. "Year-to-year noise" is where 2024 and 2025 disagree with each other.</p>
+  <div class="opts" id="lc_chgLegend"></div>
+  <div class="chart"><svg id="lc_chgChart"></svg></div>
+  <div class="tw"><table id="lc_chgTable"></table></div>
+</section>
+
+<section class="slide" data-title="Land cover: what changed into what">
+  <h2>What changed into what (interactive)</h2>
+  <p class="sub">Area of each class-to-class change since the reference year, km², largest first.</p>
+  <div class="opts" id="lc_trTabs"></div>
+  <div class="chart"><svg id="lc_trChart"></svg></div>
+  <p class="small" id="lc_trNote"></p>
+  <ul class="small">
+    <li><b>Los Angeles:</b> most "shrub to tree" is hillsides greening after the wet winters of 2023–24, following the 2016 drought.</li>
+    <li><b>Houston:</b> about 80 km² of trees and grass swapping both ways looks like storm damage and regrowth after Hurricane Beryl (July 2024). Not checked cell by cell.</li>
+    <li><b>Seattle and New York:</b> 41–46% of flagged cells were already the new class in UrbanWatch: Dynamic World's old label was wrong, not the ground.</li>
+  </ul>
+</section>
+
+<section class="slide" data-title="Land cover: new buildings">
+  <h2>Can Dynamic World see new buildings?</h2>
+  <p>Test against current Overture footprints: 10 m cells where buildings now cover at least 30 points more of the cell than in the 1 m map. Those are buildings built since the reference.</p>
+  <div class="tw"><table id="lc_nbTable"></table></div>
+  <p class="small" id="lc_nbNote"></p>
+</section>
+
+<section class="slide" data-title="Land cover: photo check">
+  <h2>Does the change show up in aerial photos?</h2>
+  <p>NAIP photos are independent of Sentinel-2. For each flagged cell, did its greenness (NDVI) drop or rise, compared with the typical change in unchanged cells? Photos from different years differ in season and drought, so this corrects for that.</p>
+  <div class="opts" id="lc_naipTabs"></div>
+  <div class="opts" id="lc_naipLegend"></div>
+  <div class="chart"><svg id="lc_naipChart"></svg></div>
+  <div class="tw"><table id="lc_naipTable"></table></div>
+  <p class="small">Blind spots: a cell can turn built without losing greenness (a gravel lot paved, graded land built on), which is most change in LA and Tucson. Seattle's two photo years differ so much that a third of unchanged cells pass too. So these rates are a floor.</p>
+</section>
+
+<section class="slide" data-title="Land cover: weighing the two">
+  <h2>Weighing the two</h2>
+  <div class="tw"><table>
+    <thead><tr><th>What matters</th><th>UrbanWatch</th><th>Dynamic World</th><th>Better</th></tr></thead>
+    <tbody>
+      <tr><td>Street-scale detail (yards, street trees, narrow streets)</td><td>1 m, resolves them</td><td>10 m, merges them into "built"</td><td>UrbanWatch</td></tr>
+      <tr><td>Building vs paved</td><td>Separate classes</td><td>One "built" class</td><td>UrbanWatch</td></tr>
+      <tr><td>Built area</td><td>Matches footprints</td><td id="lc_wBuilt">Too much (labels)</td><td>UrbanWatch</td></tr>
+      <tr><td>Urban trees</td><td>Mapped</td><td id="lc_wTree">Mostly missing</td><td>UrbanWatch</td></tr>
+      <tr><td>Recency</td><td>2014–17, 8–11 years old</td><td>Current to 2025</td><td>Dynamic World</td></tr>
+      <tr><td>Change over time</td><td>One snapshot</td><td>A consistent yearly series</td><td>Dynamic World</td></tr>
+      <tr><td>Coverage</td><td>Mostly city limits</td><td>Everywhere</td><td>Dynamic World</td></tr>
+      <tr><td>Confidence</td><td>None given</td><td>A probability per class</td><td>Dynamic World</td></tr>
+      <tr><td>Year-to-year stability</td><td>Not applicable</td><td id="lc_wFlick">Labels flip in some cells every year</td><td>Use with care</td></tr>
+    </tbody></table></div>
+  <p>For SOLWEIG an over-built map is the worse error: it puts paved surface where yards and parks are, so simulated afternoons run too hot. Trees come from the canopy raster anyway.</p>
+</section>
+
+<section class="slide" data-title="Land cover: combining them">
+  <h2>Using them together</h2>
+  <p>Dynamic World says <i>where and when</i> the ground changed; 1 m sources say <i>exactly which pixels</i>. The combination keeps the delivered map and changes a pixel only when both agree.</p>
+  <ol>
+    <li><b>Base:</b> the delivered 1 m land cover, with buildings from current Overture footprints. Buildings never change in this step.</li>
+    <li><b>Where:</b> only 10 m cells flagged as changed (2024 and 2025 agree, probability up 15 points).</li>
+    <li><b>Which pixels:</b> from newer 1 m evidence. C-CAP 2020–22 impervious says paved; NAIP NDVI below 0.2 says paved, above 0.3 says green. Pixels the evidence contradicts keep their class.</li>
+    <li><b>No 1 m evidence:</b> Dynamic World's class is used only if it is at least 60% confident. New concrete is often "bare" in Dynamic World, so built and bare are judged together.</li>
+  </ol>
+  <p class="small">Output: &lt;city&gt;_landcover_fused.tif on the same grid. The delivered rasters are unchanged.</p>
+</section>
+
+<section class="slide" data-title="Land cover: combination results">
+  <h2>What the combination changed</h2>
+  <p>Area of 1 m pixels updated per city, split by whether a newer 1 m source decided each pixel or Dynamic World alone did.</p>
+  <div class="opts" id="lc_fuLegend"></div>
+  <div class="chart"><svg id="lc_fuChart"></svg></div>
+  <div class="tw"><table id="lc_fuTable"></table></div>
+  <p class="small" id="lc_fuNote"></p>
+</section>
+
+<section class="slide" data-title="Land cover: examples">
+  <h2>Examples: the 1 km window with the most change (interactive)</h2>
+  <p class="sub">Top: NAIP photo, Dynamic World and the delivered 1 m map then. Bottom: the same now, with the combined 1 m map and updated pixels outlined in magenta. Click the image to enlarge.</p>
+  <div class="opts" id="lc_exTabs"></div>
+  <img class="fig" id="lc_exImg" alt="" style="cursor:zoom-in">
+  <p class="small" id="lc_exNote"></p>
+</section>
+
+<section class="slide" data-title="Land cover: limitations and next steps">
+  <h2>Limitations and next steps</h2>
+  <div class="two">
+    <div><h3>Limitations</h3><ul>
+      <li><b>No true accuracy for the change map yet.</b> The photo test gives a floor in green cities and nothing in dry ones.</li>
+      <li><b>Thresholds were chosen, not tuned.</b> The 15-point rise and 60% confidence are sensible defaults.</li>
+      <li><b>New concrete vs bare soil.</b> Without 1 m evidence, some new lots end up bare instead of paved.</li>
+      <li><b>Still dated where nothing newer exists.</b> Houston's 2020 base and the WorldCover cities are only updated where Dynamic World sees change.</li>
+      <li><b>Not yet tested in SOLWEIG.</b></li>
+    </ul></div>
+    <div><h3>Next steps</h3><ol>
+      <li>Build NAIP NDVI for the cities without it (Dallas, Houston, Philadelphia, Tucson, LA, San Francisco, New York) and rerun the combination: it turns 10 m guesses into 1 m decisions.</li>
+      <li>Hand-label about 200 flagged cells per city to measure real precision and recall, and tune the two thresholds.</li>
+      <li>Run SOLWEIG on a few changed blocks with the delivered and combined maps and compare.</li>
+    </ol></div>
+  </div>
+</section>
+
 </main>
 
 <div class="tip" id="tip"></div>
@@ -698,6 +872,7 @@ setCount(0);
 // index.html#part2 opens at the first slide of part 2 (Seattle, Denver, Boulder)
 if (location.hash === "#part2") addEventListener("load", () => go(slides.indexOf($("#part2"))));
 if (location.hash === "#part3") addEventListener("load", () => go(slides.indexOf($("#part3"))));
+if (location.hash === "#part4") addEventListener("load", () => go(slides.indexOf($("#part4"))));
 
 /* tables */
 const gridTable = (id, cities) => { $(id).innerHTML = `<thead><tr><th>City</th><th class="n">Grid (pixels)</th><th class="n">Area (km²)</th><th>EPSG</th><th>Roof lidar</th><th class="n">Height cap</th></tr></thead><tbody>${cities.map(c => `<tr><td>${c.name}</td><td class="n">${c.dims}</td><td class="n">${fmt(c.area)}</td><td>${c.epsg}</td><td>${c.lidar}</td><td class="n">${c.cap} m</td></tr>`).join("")}<tr><td><b>Total</b></td><td></td><td class="n"><b>${fmt(cities.reduce((a, c) => a + c.area, 0))}</b></td><td colspan="3"></td></tr></tbody>`; };
@@ -1292,4 +1467,144 @@ canopyCity("#t_canopyCity", P3_CITIES);
 const valCount = (id, cities) => { $(id).textContent = G.validation.filter(r => cities.some(c => c.id === r.city)).length; };
 valCount("#n_valCount", NEW_CITIES);
 valCount("#t_valCount", P3_CITIES);
+
+/* part 4: land cover comparison */
+const LC = await getJSON("data/landcover/lc.json");
+const LCN = Object.fromEntries(LC.cities.map(c => [c.id, c]));
+const S1 = "#2a78d6", S2 = "#eb6834", S3 = "#1baf7a";  // categorical slots 1-3: blue, orange, aqua
+const pct = (v, d = 0) => v == null ? "–" : (100 * v).toFixed(d) + "%";
+const legend = (id, items) => { $(id).innerHTML = items.map(([n, c]) => `<span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;margin-right:12px"><span style="width:12px;height:12px;background:${c};border-radius:2px"></span>${n}</span>`).join(""); };
+/* Grouped vertical bars: one group per category, one bar per series, top corners rounded, hover tooltips. */
+function bars(svgId, cats, series, { max, unit = "", f = v => v, ticks = 5, h = 320 } = {}) {
+  const svg = $(svgId), W = 1100, top = 14, bot = 46, left = 52, right = 10, H = h;
+  const vmax = max ?? (Math.max(...series.flatMap(s => s.values.filter(v => v != null))) * 1.08 || 1);
+  const gw = (W - left - right) / cats.length, bw = Math.min(26, (gw - 10) / series.length - 2);
+  const y = v => top + (H - top - bot) * (1 - v / vmax);
+  let g = "";
+  for (let i = 0; i <= ticks; i++) { const v = vmax * i / ticks, yy = y(v); g += `<line x1="${left}" x2="${W - right}" y1="${yy}" y2="${yy}" stroke="${i ? "#eee" : "#999"}"/><text x="${left - 6}" y="${yy + 4}" text-anchor="end">${f(v)}${unit}</text>`; }
+  cats.forEach((c, i) => {
+    const gx = left + i * gw + (gw - series.length * (bw + 2)) / 2;
+    series.forEach((s, j) => {
+      const v = s.values[i]; if (v == null) return;
+      const x = gx + j * (bw + 2), yy = y(v), hh = Math.max(0, y(0) - yy), r = Math.min(4, hh, bw / 2);
+      g += `<path d="M${x},${y(0)} V${yy + r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy + r} V${y(0)} Z" fill="${s.color}" data-t="${c}: ${s.name} ${f(v)}${unit}"/>`;
+      g += `<rect x="${x - 1}" y="${top}" width="${bw + 2}" height="${y(0) - top}" fill="transparent" data-t="${c}: ${s.name} ${f(v)}${unit}"/>`;
+    });
+    g += `<text x="${left + i * gw + gw / 2}" y="${H - bot + 16}" text-anchor="middle" style="font-size:12px">${c}</text>`;
+  });
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = g;
+  svg.onmousemove = e => { const t = e.target.getAttribute && e.target.getAttribute("data-t"); t ? showTip(e, t) : hideTip(); };
+  svg.onmouseleave = hideTip;
+}
+const names = LC.cities.map(c => c.name);
+
+// same-year agreement
+legend("#lc_accLegend", [["All cells", S1], ["Pure cells", S2], ["Mixed cells", S3]]);
+bars("#lc_accChart", names, [
+  { name: "all cells", color: S1, values: LC.cities.map(c => c.overall * 100) },
+  { name: "pure cells", color: S2, values: LC.cities.map(c => c.overall_pure * 100) },
+  { name: "mixed cells", color: S3, values: LC.cities.map(c => c.overall_mixed * 100) }], { max: 100, unit: "%", f: v => v.toFixed(0) });
+$("#lc_accTable").innerHTML = `<thead><tr><th>City</th><th>1 m reference</th><th class="n">Agreement</th><th class="n">Kappa</th><th class="n">Pure cells</th><th class="n">Agreement, pure</th><th class="n">Agreement, mixed</th></tr></thead><tbody>${LC.cities.map(c => `<tr><td>${c.name}</td><td>${c.reference}</td><td class="n">${pct(c.overall)}</td><td class="n">${c.kappa.toFixed(2)}</td><td class="n">${pct(c.pure_share)}</td><td class="n">${pct(c.overall_pure)}</td><td class="n">${pct(c.overall_mixed)}</td></tr>`).join("")}</tbody>`;
+{ const uw = LC.cities.filter(c => c.urbanwatch), lo = Math.min(...uw.map(c => c.overall)), hi = Math.max(...uw.map(c => c.overall));
+  $("#lc_accNote").textContent = `Against UrbanWatch, agreement is ${pct(lo)}–${pct(hi)}. In pure cells Dynamic World is right about ${pct(Math.min(...uw.map(c => c.overall_pure)))}–${pct(Math.max(...uw.map(c => c.overall_pure)))} of the time; in mixed cells only ${pct(Math.min(...uw.map(c => c.overall_mixed)))}–${pct(Math.max(...uw.map(c => c.overall_mixed)))}. WorldCover cities agree more because WorldCover is also 10 m and made from Sentinel-2. Kappa corrects for chance agreement: 0.4–0.6 is moderate.`; }
+
+// confusion explorer
+const K5 = ["built", "tree", "low_veg", "bare", "water"], K5N = { built: "Built", tree: "Tree", low_veg: "Low vegetation", bare: "Bare", water: "Water" };
+let cmCity = LC.cities.find(c => c.id === "atlanta") ? "atlanta" : LC.cities[0].id;
+function renderCM() {
+  opts($("#lc_cmTabs"), LC.cities.map(c => [c.id, c.name]), cmCity, k => { cmCity = k; renderCM(); });
+  const c = LCN[cmCity], M = c.confusion;
+  const cell = v => { const a = Math.min(1, v); const bg = `rgba(42,120,214,${(0.08 + 0.85 * a).toFixed(2)})`; return `<td class="n" style="background:${bg};color:${a > 0.5 ? "#fff" : "#1d1f21"}">${(100 * v).toFixed(0)}%</td>`; };
+  $("#lc_cmTable").innerHTML = `<thead><tr><th>1 m map ↓ / Dynamic World →</th>${K5.map(k => `<th class="n">${K5N[k]}</th>`).join("")}<th class="n">Cells</th></tr></thead><tbody>${M.map((row, i) => { const n = row.reduce((a, b) => a + b, 0); return `<tr><td>${K5N[K5[i]]}</td>${row.map(v => cell(n ? v / n : 0)).join("")}<td class="n">${fmt(n)}</td></tr>`; }).join("")}</tbody>`;
+  $("#lc_paTable").innerHTML = `<thead><tr><th>Class</th><th class="n">Found</th><th class="n">Right</th></tr></thead><tbody>${K5.map(k => `<tr><td>${K5N[k]}</td><td class="n">${pct(c.producer[k])}</td><td class="n">${pct(c.user[k])}</td></tr>`).join("")}</tbody>`;
+  const tr = M[1], trn = tr.reduce((a, b) => a + b, 0);
+  $("#lc_cmNote").textContent = `${c.name}: Dynamic World finds ${pct(c.producer.built)} of built cells, but only ${pct(c.user.built)} of what it calls built really is. ${pct(tr[0] / trn)} of the 1 m map's tree cells are called built: street trees and yard trees sit in mixed cells.`;
+}
+renderCM();
+
+// area by class
+let areaK = "built";
+const AREA_NOTE = { built: "Labels count every part-built cell as fully built, so built area comes out much too high. Probabilities land much closer.",
+  tree: "Urban trees mostly sit in mixed cells, so Dynamic World's labels lose most of them.", low_veg: "Lawns and yards are split between built and tree cells.",
+  bare: "Bare ground is rare in cities and hard for both products; Dynamic World's probabilities spread a little bare into many cells.", water: "Water is the one class both agree on." };
+function renderArea() {
+  opts($("#lc_areaTabs"), K5.map(k => [k, K5N[k]]), areaK, k => { areaK = k; renderArea(); });
+  legend("#lc_areaLegend", [["1 m map", S1], ["Dynamic World labels", S2], ["Dynamic World probabilities", S3]]);
+  bars("#lc_areaChart", names, [
+    { name: "1 m map", color: S1, values: LC.cities.map(c => c.area[areaK].reference) },
+    { name: "Dynamic World labels", color: S2, values: LC.cities.map(c => c.area[areaK].dw_label) },
+    { name: "Dynamic World probabilities", color: S3, values: LC.cities.map(c => c.area[areaK].dw_prob) }], { unit: " km²", f: v => v.toFixed(0) });
+  const r = LC.cities.filter(c => c.urbanwatch && c.area[areaK].reference > 1).map(c => c.area[areaK].dw_label / c.area[areaK].reference);
+  $("#lc_areaNote").textContent = `${AREA_NOTE[areaK]} In the UrbanWatch cities, Dynamic World's labels give ${Math.min(...r).toFixed(2)}–${Math.max(...r).toFixed(2)}× the 1 m area.`;
+}
+renderArea();
+{ const uw = LC.cities.filter(c => c.urbanwatch), rb = uw.map(c => c.area.built.dw_label / c.area.built.reference), rt = uw.map(c => 1 - c.area.tree.dw_label / c.area.tree.reference);
+  $("#lc_wBuilt").textContent = `${Math.min(...rb).toFixed(1)}–${Math.max(...rb).toFixed(1)}× too much (labels)`;
+  $("#lc_wTree").textContent = `${pct(Math.min(...rt))}–${pct(Math.max(...rt))} missing`;
+  $("#lc_wFlick").textContent = `Labels flip in ${pct(Math.min(...LC.cities.map(c => c.flicker)), 0)}–${pct(Math.max(...LC.cities.map(c => c.flicker)), 0)} of cells a year`; }
+
+// probability fit
+$("#lc_fitTable").innerHTML = `<thead><tr><th>City</th><th class="n">Built km², 1 m map</th><th class="n">From probabilities</th><th class="n">Difference</th><th class="n">Correlation per cell</th><th class="n">Mean error per cell</th><th class="n">Calibrated</th></tr></thead><tbody>${LC.cities.map(c => { const a = c.area.built; return `<tr><td>${c.name}</td><td class="n">${a.reference.toFixed(0)}</td><td class="n">${a.dw_prob.toFixed(0)}</td><td class="n">${(a.dw_prob > a.reference ? "+" : "") + pct(a.dw_prob / a.reference - 1)}</td><td class="n">${c.fit.r.toFixed(2)}</td><td class="n">${c.fit.mae_raw.toFixed(0)} pts</td><td class="n">${c.fit.mae_fit.toFixed(0)} pts</td></tr>`; }).join("")}</tbody>`;
+
+// change amount
+legend("#lc_chgLegend", [["Changed (both years agree)", S1], ["2025 only (naive)", S2], ["Year-to-year noise", S3]]);
+bars("#lc_chgChart", names, [
+  { name: "changed", color: S1, values: LC.cities.map(c => c.changed_share * 100) },
+  { name: "2025 only", color: S2, values: LC.cities.map(c => c.naive_share * 100) },
+  { name: "year-to-year noise", color: S3, values: LC.cities.map(c => c.flicker * 100) }], { unit: "%", f: v => v.toFixed(1) });
+$("#lc_chgTable").innerHTML = `<thead><tr><th>City</th><th>Years</th><th class="n">Changed</th><th class="n">Area</th><th class="n">2025 only would say</th><th class="n">Already the new class in the 1 m map</th></tr></thead><tbody>${LC.cities.map(c => `<tr><td>${c.name}</td><td>${c.ref_year}–2025</td><td class="n">${pct(c.changed_share, 1)}</td><td class="n">${c.changed_km2.toFixed(1)} km²</td><td class="n">${(c.naive_share / c.changed_share).toFixed(1)}× as much</td><td class="n">${pct(c.already)}</td></tr>`).join("")}<tr><td><b>Total</b></td><td></td><td></td><td class="n"><b>${LC.cities.reduce((a, c) => a + c.changed_km2, 0).toFixed(0)} km²</b></td><td></td><td></td></tr></tbody>`;
+
+// transitions
+let trCity = "houston";
+function renderTr() {
+  opts($("#lc_trTabs"), LC.cities.map(c => [c.id, c.name]), trCity, k => { trCity = k; renderTr(); });
+  const c = LCN[trCity], rows = Object.entries(c.transitions).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const W = 1100, rh = 26, left = 230, H = rows.length * rh + 30, vmax = Math.max(...rows.map(r => r[1]), 1) * 1.1, x = v => left + (W - left - 70) * v / vmax;
+  const lab = k => k.split("->").map(t => K5N[t]).join(" → ");
+  let g = rows.map(([k, v], i) => { const y = 8 + i * rh; return `<text x="${left - 8}" y="${y + 15}" text-anchor="end" style="font-size:13px">${lab(k)}</text><path d="M${left},${y + 3} H${Math.max(left, x(v) - 4)} Q${x(v)},${y + 3} ${x(v)},${y + 7} V${y + 17} Q${x(v)},${y + 21} ${Math.max(left, x(v) - 4)},${y + 21} H${left} Z" fill="${k.endsWith("built") ? S2 : S1}" data-t="${lab(k)}: ${v.toFixed(1)} km²"/><text x="${x(v) + 6}" y="${y + 15}" style="font-size:12px">${v.toFixed(1)}</text>`; }).join("");
+  g += `<line x1="${left}" x2="${left}" y1="4" y2="${H - 20}" stroke="#999"/><text x="${left}" y="${H - 4}" style="font-size:12px">km² (orange = to built)</text>`;
+  const svg = $("#lc_trChart"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = g;
+  svg.onmousemove = e => { const t = e.target.getAttribute && e.target.getAttribute("data-t"); t ? showTip(e, t) : hideTip(); }; svg.onmouseleave = hideTip;
+  const toB = Object.entries(c.transitions).filter(([k]) => k.endsWith("built")).reduce((a, [, v]) => a + v, 0);
+  $("#lc_trNote").textContent = `${c.name}, ${c.ref_year}–2025: ${c.changed_km2.toFixed(1)} km² changed, ${toB.toFixed(1)} km² of it to built (${pct(toB / c.changed_km2)}).`;
+}
+renderTr();
+
+// new buildings
+$("#lc_nbTable").innerHTML = `<thead><tr><th>City</th><th class="n">New-building cells</th><th class="n">Flagged as new built</th><th class="n">Built in Dynamic World now</th><th class="n">On open land: flagged</th><th class="n">On open land: already "built" in the reference year</th><th class="n">Flagged cells with a new building</th></tr></thead><tbody>${LC.cities.filter(c => c.newb && c.urbanwatch).map(c => { const n = c.newb; return `<tr><td>${c.name}</td><td class="n">${n.km2.toFixed(1)} km²</td><td class="n">${pct(n.dw_flagged_built_change)}</td><td class="n">${pct(n.dw_built_now)}</td><td class="n">${pct(n.greenfield_flagged)}</td><td class="n">${pct(n.greenfield_built_before)}</td><td class="n">${pct(n.precision_vs_overture)}</td></tr>`; }).join("")}</tbody>`;
+{ const nb = LC.cities.filter(c => c.newb && c.urbanwatch).map(c => c.newb);
+  $("#lc_nbNote").textContent = `Dynamic World calls ${pct(Math.min(...nb.map(n => n.dw_built_now)))}–${pct(Math.max(...nb.map(n => n.dw_built_now)))} of these cells built today, but flags only ${pct(Math.min(...nb.map(n => n.dw_flagged_built_change)))}–${pct(Math.max(...nb.map(n => n.dw_flagged_built_change)))} as newly built. Most cells around them were already "built" to Dynamic World in the reference year, because a 10 m cell next to a road or another house is labelled built before anything is put up. So its change map finds new districts on open land, not infill. "On open land" is new buildings on cells the 1 m map had under 30% built. Cities whose reference is WorldCover or C-CAP (Houston, Tucson, Boulder, Austin) are left out: their 10 m or footprint-free reference can't separate new buildings from old.`; }
+
+// NAIP photo check
+let naipK = "to_built";
+function renderNaip() {
+  opts($("#lc_naipTabs"), [["to_built", "Flagged to built"], ["to_vegetation", "Flagged to vegetation"]], naipK, k => { naipK = k; renderNaip(); });
+  const key = naipK === "to_built" ? "drop_share" : "rise_share", word = naipK === "to_built" ? "lost greenness" : "gained greenness";
+  legend("#lc_naipLegend", [[`Flagged cells that ${word}`, S1], [`Unchanged cells that ${word}`, S2]]);
+  const cs = LC.cities.filter(c => c.naip);
+  bars("#lc_naipChart", cs.map(c => c.name), [
+    { name: `flagged, ${word}`, color: S1, values: cs.map(c => c.naip[naipK] ? c.naip[naipK][key] * 100 : null) },
+    { name: `unchanged, ${word}`, color: S2, values: cs.map(c => c.naip.control[key] * 100) }], { unit: "%", f: v => v.toFixed(0), h: 300 });
+  $("#lc_naipTable").innerHTML = `<thead><tr><th>City</th><th>NAIP years</th><th class="n">Flagged cells</th><th class="n">Flagged, ${word}</th><th class="n">Unchanged, ${word}</th><th class="n">Ratio</th></tr></thead><tbody>${cs.map(c => { const a = c.naip[naipK], b = c.naip.control; return `<tr><td>${c.name}</td><td>${(a?.naip_years || b.naip_years).map(y => y.join("–")).join(", ")}</td><td class="n">${a ? a.n : "–"}</td><td class="n">${a ? pct(a[key]) : "–"}</td><td class="n">${pct(b[key])}</td><td class="n">${a && b[key] ? (a[key] / b[key]).toFixed(1) + "×" : "–"}</td></tr>`; }).join("")}</tbody>`;
+}
+renderNaip();
+
+// combination results
+legend("#lc_fuLegend", [["Decided by newer 1 m evidence", S1], ["Dynamic World alone", S2]]);
+bars("#lc_fuChart", names, [
+  { name: "1 m evidence", color: S1, values: LC.cities.map(c => c.fuse ? c.fuse.evidence_km2 : null) },
+  { name: "Dynamic World alone", color: S2, values: LC.cities.map(c => c.fuse ? c.fuse.dw_km2 : null) }], { unit: " km²", f: v => v.toFixed(0) });
+$("#lc_fuTable").innerHTML = `<thead><tr><th>City</th><th>Evidence used</th><th class="n">Updated</th><th class="n">Share of grid</th><th class="n">To paved</th><th class="n">To green</th><th class="n">To bare</th><th class="n">To water</th><th class="n">Decided at 1 m</th></tr></thead><tbody>${LC.cities.filter(c => c.fuse).map(c => { const f = c.fuse; return `<tr><td>${c.name}</td><td>${f.sources || "none"}</td><td class="n">${f.km2.toFixed(1)} km²</td><td class="n">${pct(f.share, 2)}</td><td class="n">${f.to_paved.toFixed(1)}</td><td class="n">${f.to_green.toFixed(1)}</td><td class="n">${f.to_bare.toFixed(1)}</td><td class="n">${f.to_water.toFixed(1)}</td><td class="n">${pct(f.evidence_km2 / Math.max(f.km2, 1e-9))}</td></tr>`; }).join("")}</tbody>`;
+{ const fs = LC.cities.filter(c => c.fuse), tot = fs.reduce((a, c) => a + c.fuse.km2, 0), dw = fs.filter(c => !c.fuse.sources).reduce((a, c) => a + c.fuse.km2, 0);
+  $("#lc_fuNote").textContent = `${tot.toFixed(0)} km² updated across ${fs.length} cities. Where NAIP NDVI exists, nearly every update is decided pixel by pixel. Cities without a newer 1 m layer (${fs.filter(c => !c.fuse.sources).map(c => c.name).join(", ")}) follow Dynamic World's 10 m cells, ${dw.toFixed(0)} km² in all, and look blocky at the edges. Areas in the columns are km².`; }
+
+// examples
+let exCity = "denver";
+function renderEx() {
+  opts($("#lc_exTabs"), LC.cities.filter(c => c.fig).map(c => [c.id, c.name]), exCity, k => { exCity = k; renderEx(); });
+  const c = LCN[exCity]; $("#lc_exImg").src = c.fig; $("#lc_exImg").alt = `${c.name}: NAIP, Dynamic World and 1 m land cover, before and after`;
+  $("#lc_exNote").textContent = c.fig_note || "";
+}
+renderEx();
+$("#lc_exImg").onclick = () => { lbList = LC.cities.filter(c => c.fig).map(c => ({ img: c.fig, landmark: c.name + " land cover change" })); openLB(lbList.findIndex(r => r.img === LCN[exCity].fig)); };
 </script>
