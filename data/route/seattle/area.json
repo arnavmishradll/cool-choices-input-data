@@ -1,0 +1,349 @@
+{
+ "city": "seattle",
+ "label": "Seattle: downtown to Capitol Hill",
+ "day_label": "Typical July 2026 day (median of each hour over the month), drawn on 2026-07-15",
+ "tz": "America/Los_Angeles",
+ "res_m": 2.0,
+ "width": 1200,
+ "height": 1200,
+ "zmin": -2.0,
+ "zscale": 0.1,
+ "crs": "EPSG:26910",
+ "ul": [
+  549526.0,
+  5274820.0
+ ],
+ "corners": [
+  [
+   -122.340835,
+   47.624889
+  ],
+  [
+   -122.308895,
+   47.624701
+  ],
+  [
+   -122.30918,
+   47.603108
+  ],
+  [
+   -122.341107,
+   47.603295
+  ]
+ ],
+ "date": "2026-07-15",
+ "met_source": "Open-Meteo ERA5 archive, median of each hour over July 2026",
+ "met": [
+  {
+   "it": 0.0,
+   "Tair": 16.7,
+   "RH": 74.0,
+   "U": 2.36,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 1.0,
+   "Tair": 16.3,
+   "RH": 77.0,
+   "U": 2.17,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 2.0,
+   "Tair": 16.1,
+   "RH": 78.0,
+   "U": 1.99,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 3.0,
+   "Tair": 15.7,
+   "RH": 81.0,
+   "U": 2.06,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 4.0,
+   "Tair": 15.2,
+   "RH": 82.0,
+   "U": 1.82,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 5.0,
+   "Tair": 15.3,
+   "RH": 82.0,
+   "U": 2.11,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 6.0,
+   "Tair": 15.1,
+   "RH": 84.0,
+   "U": 1.78,
+   "kdown": 4.0,
+   "kdiff": 4.0,
+   "kdir": 17.8
+  },
+  {
+   "it": 7.0,
+   "Tair": 15.2,
+   "RH": 82.0,
+   "U": 1.84,
+   "kdown": 58.0,
+   "kdiff": 35.0,
+   "kdir": 180.9
+  },
+  {
+   "it": 8.0,
+   "Tair": 16.0,
+   "RH": 77.0,
+   "U": 1.81,
+   "kdown": 187.0,
+   "kdiff": 79.0,
+   "kdir": 326.1
+  },
+  {
+   "it": 9.0,
+   "Tair": 16.9,
+   "RH": 71.0,
+   "U": 1.9,
+   "kdown": 308.0,
+   "kdiff": 125.0,
+   "kdir": 352.2
+  },
+  {
+   "it": 10.0,
+   "Tair": 18.2,
+   "RH": 66.0,
+   "U": 2.05,
+   "kdown": 465.0,
+   "kdiff": 177.0,
+   "kdir": 449.5
+  },
+  {
+   "it": 11.0,
+   "Tair": 19.1,
+   "RH": 63.0,
+   "U": 2.02,
+   "kdown": 591.0,
+   "kdiff": 207.0,
+   "kdir": 505.0
+  },
+  {
+   "it": 12.0,
+   "Tair": 20.0,
+   "RH": 59.0,
+   "U": 1.94,
+   "kdown": 671.0,
+   "kdiff": 221.0,
+   "kdir": 533.2
+  },
+  {
+   "it": 13.0,
+   "Tair": 21.1,
+   "RH": 55.0,
+   "U": 2.14,
+   "kdown": 712.0,
+   "kdiff": 210.0,
+   "kdir": 562.7
+  },
+  {
+   "it": 14.0,
+   "Tair": 22.2,
+   "RH": 51.0,
+   "U": 2.36,
+   "kdown": 769.0,
+   "kdiff": 194.0,
+   "kdir": 651.6
+  },
+  {
+   "it": 15.0,
+   "Tair": 22.9,
+   "RH": 47.0,
+   "U": 2.3,
+   "kdown": 802.0,
+   "kdiff": 145.0,
+   "kdir": 798.8
+  },
+  {
+   "it": 16.0,
+   "Tair": 23.0,
+   "RH": 46.0,
+   "U": 3.11,
+   "kdown": 705.0,
+   "kdiff": 130.0,
+   "kdir": 731.3
+  },
+  {
+   "it": 17.0,
+   "Tair": 23.1,
+   "RH": 43.5,
+   "U": 3.0,
+   "kdown": 608.0,
+   "kdiff": 135.5,
+   "kdir": 694.3
+  },
+  {
+   "it": 18.0,
+   "Tair": 22.6,
+   "RH": 43.5,
+   "U": 3.42,
+   "kdown": 454.5,
+   "kdiff": 94.0,
+   "kdir": 627.25
+  },
+  {
+   "it": 19.0,
+   "Tair": 22.15,
+   "RH": 47.0,
+   "U": 3.8,
+   "kdown": 306.0,
+   "kdiff": 76.0,
+   "kdir": 574.6
+  },
+  {
+   "it": 20.0,
+   "Tair": 20.95,
+   "RH": 50.5,
+   "U": 3.84,
+   "kdown": 154.5,
+   "kdiff": 50.0,
+   "kdir": 465.1
+  },
+  {
+   "it": 21.0,
+   "Tair": 19.6,
+   "RH": 57.5,
+   "U": 3.37,
+   "kdown": 33.5,
+   "kdiff": 17.0,
+   "kdir": 193.65
+  },
+  {
+   "it": 22.0,
+   "Tair": 18.3,
+   "RH": 66.0,
+   "U": 3.15,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 23.0,
+   "Tair": 17.6,
+   "RH": 70.5,
+   "U": 2.71,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  }
+ ],
+ "quant": {
+  "utci": [
+   0.0,
+   0.25
+  ],
+  "tmrt": [
+   0.0,
+   0.4
+  ],
+  "shadow": [
+   0.0,
+   0.004
+  ]
+ },
+ "files": {
+  "utci": [
+   "utci_g0_00.png",
+   "utci_g0_03.png",
+   "utci_g0_06.png",
+   "utci_g0_09.png",
+   "utci_g0_12.png",
+   "utci_g0_15.png",
+   "utci_g0_18.png",
+   "utci_g0_21.png"
+  ],
+  "tmrt": [
+   "tmrt_g0_00.png",
+   "tmrt_g0_03.png",
+   "tmrt_g0_06.png",
+   "tmrt_g0_09.png",
+   "tmrt_g0_12.png",
+   "tmrt_g0_15.png",
+   "tmrt_g0_18.png",
+   "tmrt_g0_21.png"
+  ],
+  "shadow": [
+   "shadow_g0_00.png",
+   "shadow_g0_03.png",
+   "shadow_g0_06.png",
+   "shadow_g0_09.png",
+   "shadow_g0_12.png",
+   "shadow_g0_15.png",
+   "shadow_g0_18.png",
+   "shadow_g0_21.png"
+  ]
+ },
+ "growths": [
+  {
+   "m": 0,
+   "tree_km2": 0.596
+  },
+  {
+   "m": 1,
+   "tree_km2": 0.791
+  }
+ ],
+ "tag": "g0",
+ "hours": 24,
+ "variants": {
+  "g0": {
+   "utci": [
+    "utci_g0_00.png",
+    "utci_g0_03.png",
+    "utci_g0_06.png",
+    "utci_g0_09.png",
+    "utci_g0_12.png",
+    "utci_g0_15.png",
+    "utci_g0_18.png",
+    "utci_g0_21.png"
+   ],
+   "tmrt": [
+    "tmrt_g0_00.png",
+    "tmrt_g0_03.png",
+    "tmrt_g0_06.png",
+    "tmrt_g0_09.png",
+    "tmrt_g0_12.png",
+    "tmrt_g0_15.png",
+    "tmrt_g0_18.png",
+    "tmrt_g0_21.png"
+   ],
+   "shadow": [
+    "shadow_g0_00.png",
+    "shadow_g0_03.png",
+    "shadow_g0_06.png",
+    "shadow_g0_09.png",
+    "shadow_g0_12.png",
+    "shadow_g0_15.png",
+    "shadow_g0_18.png",
+    "shadow_g0_21.png"
+   ]
+  }
+ },
+ "timings": {
+  "g0": 3452
+ }
+}

@@ -1,5 +1,9 @@
 [
  {
+  "id": "seattle",
+  "label": "Seattle: downtown to Capitol Hill, typical July 2026 day"
+ },
+ {
   "id": "seattle_heatdome",
   "label": "Seattle: downtown to Capitol Hill, 2021 heat dome"
  }
