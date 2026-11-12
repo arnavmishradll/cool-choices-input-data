@@ -52,7 +52,19 @@ canvas.ras { width: 100%; height: auto; image-rendering: pixelated; border: 1px 
 .tip { position: fixed; z-index: 90; pointer-events: none; background: #fff; border: 1px solid #999; padding: 5px 8px; font-size: 12.5px; max-width: 280px; display: none; }
 code { font-size: 12.5px; background: var(--soft); padding: 1px 4px; }
 ol li, ul li { margin-bottom: 4px; }
-@media (max-width: 900px) { .split { grid-template-columns: minmax(0, 1fr); } .mapbox { height: 420px; } main { padding: 12px 16px 40px; } }
+.runpanel { border: 1px solid var(--line); border-left: 4px solid var(--s2); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: #fff; }
+.runpanel.done { border-left-color: var(--s3); } .runpanel.fail { border-left-color: #c0392b; }
+.rp-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.rp-head .grow { flex: 1; }
+.rp-bar { height: 10px; background: var(--soft); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.rp-bar div { height: 100%; width: 0; background: var(--s2); border-radius: 4px; transition: width .6s linear; }
+.runpanel.done .rp-bar div { background: var(--s3); }
+.rp-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
+.rp-steps li { padding: 5px 6px; border: 1px solid var(--line); color: var(--muted); }
+.rp-steps li.now { border-color: var(--s2); color: var(--fg); font-weight: 600; }
+.rp-steps li.ok { color: var(--fg); }
+.rp-steps li .t { display: block; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 900px) { .rp-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split { grid-template-columns: minmax(0, 1fr); } .mapbox { height: 420px; } main { padding: 12px 16px 40px; } }
 </style>
 <header>
   <h1>Cool Routes: walking by perceived effort</h1>
@@ -68,6 +80,12 @@ ol li, ul li { margin-bottom: 4px; }
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="b primary" id="live">Run SOLWEIG for this trip</button><button class="b" id="clear">Clear points</button></div>
   </div>
   <div class="status" id="status">Loading…</div>
+  <div class="runpanel" id="runPanel" hidden>
+    <div class="rp-head"><b id="rpTitle">Live SOLWEIG-light run</b><span class="small grow" id="rpWhat"></span><span id="rpTime" style="font-variant-numeric:tabular-nums"></span><button class="b" id="rpCancel">Cancel run</button></div>
+    <div class="rp-bar"><div id="rpBar"></div></div>
+    <ol class="rp-steps" id="rpSteps"></ol>
+    <div class="small" id="rpInfo"></div>
+  </div>
   <div class="split">
     <div class="side">
       <div class="opts"><span class="l">View</span><span id="viewSeg" class="opts"></span><span class="l" style="margin-left:12px">Overlay</span><span id="ovSeg" class="opts"></span></div>
@@ -595,24 +613,63 @@ $("#clear").onclick = () => { pts = []; drawPts(); computeRoutes(); };
 const SERVER = "http://localhost:8000";
 async function checkServer() {
   try { const r = await fetch(SERVER + "/api/health", { signal: AbortSignal.timeout(1500) }); server = r.ok; } catch (e) { server = false; }
-  $("#live").disabled = !server;
+  $("#live").disabled = !server || polling !== null;
+  if (server) { try { const h = await (await fetch(SERVER + "/api/health")).json(); if (h.busy && !polling) startPolling(); } catch (e) { /* ignore */ } }
   $("#live").title = server ? "" : "Start the local server to enable live runs (section 9).";
 }
+/* live-run status panel: polls the server's progress while a run is going */
+const STAGE_W = { "Corridor": [0, 2], "Weather": [2, 6], "Sky view": [6, 12], "SOLWEIG-light model": [12, 95], "Sampling paths": [95, 100] };
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+let polling = null;
+function renderProgress(p) {
+  const panel = $("#runPanel"); panel.hidden = false; panel.className = "runpanel";
+  const stages = p.stages || Object.keys(STAGE_W), cur = p.stage_index ?? 0, el = p.elapsed_s || 0;
+  let pct = 0, left = null;
+  if (p.stage) {
+    const [lo, hi] = STAGE_W[p.stage];
+    let f = 0.5;
+    if (p.stage === "SOLWEIG-light model" && p.model_eta_s) { f = Math.min(0.97, (p.stage_elapsed_s || 0) / p.model_eta_s); left = Math.max(5, p.model_eta_s - (p.stage_elapsed_s || 0)) + 4; }
+    pct = lo + (hi - lo) * f;
+  }
+  $("#rpBar").style.width = pct.toFixed(1) + "%";
+  $("#rpTime").textContent = `${mmss(el)} elapsed${left != null ? ` · about ${mmss(left)} left` : ""}`;
+  $("#rpWhat").textContent = p.date ? `${p.date}, from ${String(Math.floor(p.hour)).padStart(2, "0")}:00, crowns +${p.grow_m} m${p.area_km2 ? ` · corridor ${fmt(p.area_km2, 2)} km² (${fmt(p.pixels)} px, ${fmt(p.edges)} path segments)` : ""}` : "";
+  $("#rpSteps").innerHTML = stages.map((n, i) => `<li class="${i < cur ? "ok" : i === cur ? "now" : ""}">${i < cur ? "✓ " : i === cur ? "▶ " : ""}${n}<span class="t">${i === cur ? (p.detail && n === "SOLWEIG-light model" ? p.detail + " · " : "") + mmss(p.stage_elapsed_s || 0) : i < cur ? "done" : "waiting"}</span></li>`).join("");
+  $("#rpInfo").textContent = p.stage === "SOLWEIG-light model" ? `The time left is an estimate from earlier runs on this laptop (${p.model_eta_s} s expected for this corridor and ${p.hours ? p.hours.length : 2} hours).` : "";
+  $("#rpCancel").hidden = false;
+}
+function finishPanel(kind, text) {
+  const panel = $("#runPanel"); panel.hidden = false; panel.className = "runpanel " + kind;
+  if (kind === "done") { $("#rpBar").style.width = "100%"; $("#rpSteps").querySelectorAll("li").forEach(li => { li.className = "ok"; li.querySelector(".t").textContent = "done"; }); }
+  $("#rpTitle").textContent = kind === "done" ? "Live run finished" : "Live run stopped";
+  $("#rpInfo").textContent = text; $("#rpCancel").hidden = true;
+}
+function startPolling() {
+  if (polling) return;
+  $("#rpTitle").textContent = "Live SOLWEIG-light run";
+  const tick = async () => { try { const p = await (await fetch(SERVER + "/api/progress")).json(); if (p.running) renderProgress(p); else { clearInterval(polling); polling = null; } } catch (e) { /* server gone */ } };
+  tick(); polling = setInterval(tick, 700);
+}
+$("#rpCancel").onclick = async () => { $("#rpCancel").disabled = true; try { await fetch(SERVER + "/api/cancel", { method: "POST" }); } finally { $("#rpCancel").disabled = false; } };
 $("#live").onclick = async () => {
   if (pts.length < 2) { status("Set a start and an end first.", "err"); return; }
-  const t0 = performance.now(), tick = setInterval(() => status(`Running SOLWEIG-light for this trip… ${((performance.now() - t0) / 1000).toFixed(0)} s (sky view, then each hour of the walk)`, "busy"), 1000);
-  $("#live").disabled = true;
+  $("#live").disabled = true; status("Live run in progress: see the panel below.", "busy");
+  startPolling();
   try {
     const r = await fetch(SERVER + "/api/route", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ origin: nodes[pts[0]].slice(0, 2), dest: nodes[pts[1]].slice(0, 2), date: $("#date").value, hour, grow_m: grow }) });
-    if (!r.ok) throw new Error((await r.json()).detail || r.status);
+    if (!r.ok) { const d = (await r.json()).detail || r.status; const e = new Error(d); e.cancelled = d === "cancelled"; throw e; }
     live = await r.json();
     const c = live.corridor, [x0, y0] = c.ul, w = c.window[3] * RES, h = c.window[2] * RES;
     live.cornersLL = [[x0, y0], [x0 + w, y0], [x0 + w, y0 - h], [x0, y0 - h]].map(([x, y]) => unproj(x, y));
     map.getSource("corr").setData({ type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: [...live.cornersLL, live.cornersLL[0]] } }] });
     runs.unshift({ when: new Date().toLocaleTimeString(), date: live.date, hours: `${live.hours[0]}–${live.hours[live.hours.length - 1]}`, km2: c.pixels * RES * RES / 1e6, s: live.solweig_seconds, total: live.total_seconds, grow });
+    finishPanel("done", `Done in ${mmss(live.total_seconds)} (model ${fmt(live.solweig_seconds)} s, sky view ${live.svf_reused ? "reused from the study area" : "computed for the corridor"}). Routes, overlays and “Under the hood” now show this run; the dashed box on the map is the modelled corridor.`);
     renderTiming(); computeRoutes(); drawOverlay(); renderOut(); renderMet();
-  } catch (e) { status("Live run failed: " + e.message, "err"); }
-  finally { clearInterval(tick); $("#live").disabled = !server; }
+  } catch (e) {
+    finishPanel("fail", e.cancelled ? "Cancelled. The routes still use the data they had before." : "Failed: " + e.message);
+    status(e.cancelled ? "Live run cancelled." : "Live run failed: " + e.message, "err");
+  }
+  finally { clearInterval(polling); polling = null; $("#live").disabled = !server; }
 };
 function unproj(x, y) {   // inverse of proj (UTM to lon/lat), iterated from a first guess
   let lon = (ZONE * 6 - 183) + (x - 500000) / 75000, lat = y / 111200;
