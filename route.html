@@ -69,11 +69,12 @@ ol li, ul li { margin-bottom: 4px; }
 </style>
 <header>
   <h1>Cool Routes: walking by perceived effort</h1>
-  <span class="sub">Prototype · Seattle, downtown to Capitol Hill · SOLWEIG-light at 2 m</span>
+  <span class="sub" id="sub">Prototype · SOLWEIG-light at 2 m</span>
   <a href="index.html">← Back to the slides</a>
 </header>
 <main>
   <div class="controls">
+    <label>City and day<select id="city"></select></label>
     <label>Date<input type="date" id="date"></label>
     <label>Departure time: <b id="hourv">14:00</b><input type="range" id="hour" min="5" max="21" step="0.25" value="14"></label>
     <label>Tree crown growth (see below)<select id="grow"></select></label>
@@ -151,8 +152,19 @@ async function pngData(url) {
 }
 
 /* ---------- data ---------- */
-const A = await getJSON("data/route/area.json");
-const NETW = await getJSON("data/route/network.json");
+// each city (and Seattle's 2021 heat dome) has its own folder under data/route/; ?city=<id> picks one
+const CITIES = await getJSON("data/route/cities.json");
+const CITY = (() => { const q = new URLSearchParams(location.search).get("city"); return CITIES.some(c => c.id === q) ? q : CITIES[0].id; })();
+const DATA = `data/route/${CITY}/`;
+$("#city").innerHTML = CITIES.map(c => `<option value="${c.id}">${c.label}</option>`).join("");
+$("#city").value = CITY;
+$("#city").onchange = e => { location.search = "?city=" + e.target.value; };
+const A = await getJSON(DATA + "area.json");
+$("#sub").textContent = `Prototype · ${A.label || "Seattle: downtown to Capitol Hill"} · SOLWEIG-light at 2 m`;
+document.title = `Cool Routes: ${(A.label || "Seattle").split(":")[0]}`;
+const TYPICAL = (A.day_label || "").startsWith("Typical");
+const DAY = A.day_label || (A.date === "2021-06-28" ? "Pacific Northwest heat dome, 2021-06-28" : A.date);
+const NETW = await getJSON(DATA + "network.json");
 const NW = A.width, NH = A.height, RES = A.res_m, NN = NW * NH;
 const nodes = NETW.nodes, E = NETW.edges;
 const adj = nodes.map(() => []);
@@ -162,24 +174,24 @@ const VAR = { utci: { label: "UTCI (feels-like temperature)", unit: "°C", lo: 2
 const QUANT = { ...A.quant, svf: [0, 1 / 250] };
 let grow = A.variants.g1 ? 1 : +(Object.keys(A.variants)[0] || "g0").slice(1);  // +1 m is the growth the NAIP check supports (section 7)
 const edgeCache = {};
-async function edgesFor(tag) { return edgeCache[tag] ??= Object.fromEntries(await Promise.all(["utci", "tmrt", "shadow"].map(async v => [v, await getJSON(`data/route/edges_${v}_${tag}.json`)]))); }
+async function edgesFor(tag) { return edgeCache[tag] ??= Object.fromEntries(await Promise.all(["utci", "tmrt", "shadow"].map(async v => [v, await getJSON(`${DATA}edges_${v}_${tag}.json`)]))); }
 const layerCache = {};
 async function layer(tag, v, h) {   // Float32Array NW*NH of hour h for the precomputed day
   const key = `${tag}/${v}/${h}`; if (layerCache[key]) return layerCache[key];
   const [off, sc] = QUANT[v];
-  if (v === "svf") { const d = await pngData("data/route/svf.png"), a = new Float32Array(NN); for (let k = 0; k < NN; k++) a[k] = d[k * 4] * sc; return (layerCache[key] = a); }
-  const d = await pngData(`data/route/${A.variants[tag][v][Math.floor(h / 3)]}`), ch = h % 3, a = new Float32Array(NN);
+  if (v === "svf") { const d = await pngData(DATA + "svf.png"), a = new Float32Array(NN); for (let k = 0; k < NN; k++) a[k] = d[k * 4] * sc; return (layerCache[key] = a); }
+  const d = await pngData(DATA + A.variants[tag][v][Math.floor(h / 3)]), ch = h % 3, a = new Float32Array(NN);
   for (let k = 0; k < NN; k++) { const b = d[k * 4 + ch]; a[k] = b === 255 ? NaN : off + sc * b; }
   return (layerCache[key] = a);
 }
 const BASE = {};
 {
-  const [D, M] = await Promise.all([pngData("data/route/base_dsm.png"), pngData("data/route/base_dem.png")]);
+  const [D, M] = await Promise.all([pngData(DATA + "base_dsm.png"), pngData(DATA + "base_dem.png")]);
   BASE.dsm = new Float32Array(NN); BASE.dem = new Float32Array(NN); BASE.lc = new Uint8Array(NN);
   for (let k = 0, q = 0; k < NN; k++, q += 4) { BASE.dsm[k] = A.zmin + (D[q] * 256 + D[q + 1]) * A.zscale; BASE.lc[k] = D[q + 2]; BASE.dem[k] = A.zmin + (M[q] * 256 + M[q + 1]) * A.zscale; }
 }
 const treeCache = {};
-async function trees(g) { if (treeCache[g]) return treeCache[g]; const d = await pngData(`data/route/trees_g${g}.png`), a = new Uint8Array(NN); for (let k = 0; k < NN; k++) a[k] = d[k * 4]; return (treeCache[g] = a); }
+async function trees(g) { if (treeCache[g]) return treeCache[g]; const d = await pngData(`${DATA}trees_g${g}.png`), a = new Uint8Array(NN); for (let k = 0; k < NN; k++) a[k] = d[k * 4]; return (treeCache[g] = a); }
 
 /* ---------- state ---------- */
 let avoidIndoor = false;
@@ -259,7 +271,7 @@ function computeRoutes() {
   if (!src) { routes = null; drawRoutes(); renderTable(); status(`No model output for ${$("#date").value} with +${grow} m crowns yet. ${server ? "Press “Run SOLWEIG for this trip”." : "Start the local server to run it live (section 9), or go back to " + A.date + "."}`, "err"); return; }
   routes = ["short", "fast", "effort"].map(k => { const p = dijkstra(pts[0], pts[1], k, src); return p ? { kind: k, path: p, ...summarize(p, src) } : null; });
   drawRoutes(); renderTable(); drawProfile();
-  const msg = src.tag === "live" ? `Live SOLWEIG-light run for ${live.date}, hours ${live.hours[0]}:00–${live.hours[live.hours.length - 1]}:00, corridor ${fmt(live.corridor.pixels * RES * RES / 1e6, 2)} km² (${live.corridor.edges} path segments).` : `Precomputed day: ${A.date}${A.date === "2021-06-28" ? " (Pacific Northwest heat dome)" : ""}, whole study area.`;
+  const msg = src.tag === "live" ? `Live SOLWEIG-light run for ${live.date}, hours ${live.hours[0]}:00–${live.hours[live.hours.length - 1]}:00, corridor ${fmt(live.corridor.pixels * RES * RES / 1e6, 2)} km² (${live.corridor.edges} path segments).` : `Precomputed day: ${DAY}, whole study area.`;
   status(msg + (server ? " Local server connected." : ""), src.tag === "live" ? "live" : "");
 }
 function renderTable() {
@@ -677,7 +689,7 @@ $("#live").onclick = async () => {
   $("#live").disabled = true; status("Live run in progress: see the panel below.", "busy");
   startPolling();
   try {
-    const r = await fetch(SERVER + "/api/route", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ origin: nodes[pts[0]].slice(0, 2), dest: nodes[pts[1]].slice(0, 2), date: $("#date").value, hour, grow_m: grow }) });
+    const r = await fetch(SERVER + "/api/route", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city: CITY, origin: nodes[pts[0]].slice(0, 2), dest: nodes[pts[1]].slice(0, 2), date: $("#date").value, hour, grow_m: grow }) });
     if (!r.ok) { const d = (await r.json()).detail || r.status; const e = new Error(d); e.cancelled = d === "cancelled"; throw e; }
     live = await r.json();
     const c = live.corridor, [x0, y0] = c.ul, w = c.window[3] * RES, h = c.window[2] * RES;
@@ -701,7 +713,7 @@ function unproj(x, y) {   // inverse of proj (UTM to lon/lat), iterated from a f
 /* ---------- under the hood ---------- */
 const runs = [];
 function renderTiming() {
-  const rows = [[`Study area, ${A.date}`, `${fmt(NW * RES / 1000, 1)} × ${fmt(NH * RES / 1000, 1)} km at ${RES} m (${fmt(NN)} px)`, "0–23", A.timing ? `${fmt(A.timing.svf_s / 60, 1)} min sky view + ${fmt(A.timing.hours_s / 60, 1)} min for 24 h` : "precomputed"]];
+  const rows = [[`Study area, ${TYPICAL ? "typical July 2026 day" : A.date}`, `${fmt(NW * RES / 1000, 1)} × ${fmt(NH * RES / 1000, 1)} km at ${RES} m (${fmt(NN)} px)`, "0–23", A.timing ? `${fmt(A.timing.svf_s / 60, 1)} min sky view + ${fmt(A.timing.hours_s / 60, 1)} min for 24 h` : A.timings ? Object.entries(A.timings).map(([k, v]) => `${fmt(v / 60)} min (+${k.slice(1)} m crowns)`).join(", ") : "precomputed"]];
   for (const r of runs) rows.push([`Live ${r.when} (+${r.grow} m)`, `${fmt(r.km2, 2)} km² corridor`, r.hours, `${fmt(r.s)} s model, ${fmt(r.total)} s total`]);
   $("#timing").innerHTML = `<thead><tr><th>Run</th><th>Area</th><th>Hours</th><th>Time</th></tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`;
 }
@@ -710,7 +722,7 @@ let inK = "height", outK = "utci";
 async function renderIn() {
   opts($("#inSeg"), [["height", "Building height"], ["dem", "Ground elevation"], ["trees", "Tree height"], ["lc", "Land cover"]], inK, k => { inK = k; renderIn(); });
   const cv = $("#inCanvas"); cv.width = NW; cv.height = NH; const img = new ImageData(NW, NH); let lo = 0, hi = 1, v = "svf", lab = "";
-  if (inK === "lc") { const C = { 1: [142, 142, 142], 2: [192, 57, 43], 5: [155, 203, 106], 6: [216, 185, 138], 7: [59, 127, 196] }; for (let k = 0; k < NN; k++) { const c = C[BASE.lc[k]] || [0, 0, 0]; img.data.set([...c, 255], k * 4); } cv.getContext("2d").putImageData(img, 0, 0); $("#inLegend").innerHTML = `<p class="small">${Object.entries({ Paved: "#8e8e8e", Building: "#c0392b", Grass: "#9bcb6a", "Bare soil": "#d8b98a", Water: "#3b7fc4" }).map(([n, c]) => `<span class="sw" style="background:${c}"></span>${n}`).join(" &nbsp; ")}. From Seattle's 1 m land cover (UrbanWatch 2017).</p>`; return; }
+  if (inK === "lc") { const C = { 1: [142, 142, 142], 2: [192, 57, 43], 5: [155, 203, 106], 6: [216, 185, 138], 7: [59, 127, 196] }; for (let k = 0; k < NN; k++) { const c = C[BASE.lc[k]] || [0, 0, 0]; img.data.set([...c, 255], k * 4); } cv.getContext("2d").putImageData(img, 0, 0); $("#inLegend").innerHTML = `<p class="small">${Object.entries({ Paved: "#8e8e8e", Building: "#c0392b", Grass: "#9bcb6a", "Bare soil": "#d8b98a", Water: "#3b7fc4" }).map(([n, c]) => `<span class="sw" style="background:${c}"></span>${n}`).join(" &nbsp; ")}. From the city's delivered 1 m land cover.</p>`; return; }
   let a;
   if (inK === "height") { a = BASE.dsm.map((z, k) => z - BASE.dem[k]); lo = 0; hi = 120; lab = "Building height above ground (m) — Building_DSM.tif minus DEM"; }
   if (inK === "dem") { a = BASE.dem; lo = Math.min(...BASE.dem.filter((_, i) => i % 50 === 0)); hi = Math.max(...BASE.dem.filter((_, i) => i % 50 === 0)); lab = "Ground elevation (m) — DEM.tif"; }
@@ -739,7 +751,7 @@ function renderMet() {
   const charts = [["Tair", "Air temperature (°C)"], ["RH", "Relative humidity (%)"], ["kdown", "Global solar radiation (W/m²)"], ["U", "Wind speed (m/s)"]];
   $("#metCharts").innerHTML = charts.map(([k, lab]) => { const xs = M.map(r => r.it), ys = M.map(r => r[k]), lo = Math.min(0, ...ys), hi = Math.max(...ys) * 1.1 || 1, Wd = 300, Hh = 130, X = x => 30 + (Wd - 40) * (x / 23), Y = y => 10 + (Hh - 35) * (1 - (y - lo) / (hi - lo));
     return `<div class="chart"><svg viewBox="0 0 ${Wd} ${Hh}"><text x="30" y="9">${lab}</text><line x1="30" x2="${Wd - 10}" y1="${Y(lo)}" y2="${Y(lo)}" stroke="#999"/><text x="26" y="${Y(hi) + 4}" text-anchor="end">${fmt(hi)}</text><text x="26" y="${Y(lo) + 4}" text-anchor="end">${fmt(lo)}</text>${[0, 6, 12, 18, 23].map(h => `<text x="${X(h)}" y="${Hh - 6}" text-anchor="middle">${h}h</text>`).join("")}<path d="${xs.map((x, i) => (i ? "L" : "M") + X(x).toFixed(1) + "," + Y(ys[i]).toFixed(1)).join("")}" fill="none" stroke="#2a78d6" stroke-width="2"/>${xs.map((x, i) => `<circle cx="${X(x)}" cy="${Y(ys[i])}" r="3" fill="#2a78d6"><title>${x}:00 ${ys[i]}</title></circle>`).join("")}</svg></div>`; }).join("");
-  $("#metNote").textContent = `Source: Open-Meteo (ERA5 reanalysis for past dates, forecast for recent and coming days), ${label}. ERA5 is a ~25 km model grid, so it smooths city extremes: on 2021-06-28 it peaks at ${fmt(Math.max(...A.met.map(r => r.Tair)), 1)} °C while Seattle's official high was about 42 °C.`;
+  $("#metNote").textContent = `Source: Open-Meteo (ERA5 reanalysis for past dates, forecast for recent and coming days), ${label}. ERA5 is a ~25 km model grid, so it smooths city extremes${A.date === "2021-06-28" ? `: on 2021-06-28 it peaks at ${fmt(Math.max(...A.met.map(r => r.Tair)), 1)} °C while Seattle's official high was about 42 °C` : ""}.${TYPICAL ? " The default day is the median weather of each hour over July 2026, so a typical rather than a record day." : ""}`;
 }
 renderMet();
 const ASSUME = [
@@ -762,13 +774,13 @@ $("#assume").innerHTML = `<thead><tr><th>What</th><th>Formula or value</th><th>S
 $("#aCorr").textContent = "max(100 m, 15% of its length)"; $("#aBuf").textContent = "100 m";
 $("#liveHelp").innerHTML = `<p>GitHub Pages can only serve files, so live runs need a small server on this computer. When it is running, this page finds it automatically and enables <b>Run SOLWEIG for this trip</b>; otherwise it uses the precomputed day.</p><pre style="background:var(--soft);padding:8px;overflow-x:auto">cd "D:\\City_Boundary (1)\\routing"
 %USERPROFILE%\\miniforge3\\envs\\solweig-light\\python.exe server.py</pre><p>A live run crops the study area to the trip's corridor, fetches that date's weather, and runs SOLWEIG-light for the walk's hours only. Any date works for weather; the buildings and trees are the 2021 lidar.</p>`;
-fetch("data/route/validation.json").then(r => r.ok ? r.json() : null).then(v => { if (v) renderValidation(v); else $("#valid").textContent = "Validation results not generated yet."; }).catch(() => { $("#valid").textContent = "Validation results not generated yet."; });
+fetch(DATA + "validation.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null).then(v => { if (v) renderValidation(v); else $("#valid").textContent = "Validation results not generated yet."; }).catch(() => { $("#valid").textContent = "Validation results not generated yet."; });
 function renderValidation(v) { $("#valid").innerHTML = v.html; if (v.grow_html) $("#grow7").innerHTML = v.grow_html; }
 
 /* ---------- start ---------- */
 if (hasPre()) await edgesFor(tagOf());
 await checkServer(); setInterval(checkServer, 30000);
 renderIn(); renderOut(); drawOverlay();
-status(`Precomputed day loaded: ${A.date}. Click the map to set a start and an end.${server ? " Local server connected: live runs available." : ""}`);
+status(`Precomputed day loaded: ${DAY}. Click the map to set a start and an end.${server ? " Local server connected: live runs available." : ""}`);
 </script>
 </html>

@@ -384,5 +384,8 @@
   "hours_s": 1604,
   "threads": 16,
   "machine": "Intel Core Ultra 7 155H, 16 GB"
- }
+ },
+ "label": "Seattle: downtown to Capitol Hill",
+ "day_label": "Pacific Northwest heat dome, 2021-06-28",
+ "city": "seattle"
 }
