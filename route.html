@@ -78,6 +78,7 @@ ol li, ul li { margin-bottom: 4px; }
     <label>Departure time: <b id="hourv">14:00</b><input type="range" id="hour" min="5" max="21" step="0.25" value="14"></label>
     <label>Tree crown growth (see below)<select id="grow"></select></label>
     <label>Heat sensitivity: <b id="kv">0.05</b> per °C<input type="range" id="k" min="0" max="0.15" step="0.01" value="0.05"></label>
+    <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="avoidIn"> Avoid indoor and covered passages</label>
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="b primary" id="live">Run SOLWEIG for this trip</button><button class="b" id="clear">Clear points</button></div>
   </div>
   <div class="status" id="status">Loading…</div>
@@ -92,7 +93,7 @@ ol li, ul li { margin-bottom: 4px; }
       <div class="opts"><span class="l">View</span><span id="viewSeg" class="opts"></span><span class="l" style="margin-left:12px">Overlay</span><span id="ovSeg" class="opts"></span></div>
       <div class="mapbox"><div id="map"></div><div id="gl" hidden></div></div>
       <div id="ovLegend"></div>
-      <p class="small">Click the map to set a start, then an end. Routes: <span class="sw" style="background:var(--s1)"></span>shortest, <span class="sw" style="background:var(--s2)"></span>fastest (slope-aware), <span class="sw" style="background:var(--s3)"></span>least perceived effort (slope and heat). Map © OpenStreetMap contributors.</p>
+      <p class="small">In 3D, routes are hidden by buildings and show through faintly; a stretch that only shows faintly runs behind or through a building (indoor or covered passages exist in the walking network). Click the map to set a start, then an end. Routes: <span class="sw" style="background:var(--s1)"></span>shortest, <span class="sw" style="background:var(--s2)"></span>fastest (slope-aware), <span class="sw" style="background:var(--s3)"></span>least perceived effort (slope and heat). Map © OpenStreetMap contributors.</p>
     </div>
     <div class="side">
       <h3>Routes</h3>
@@ -140,9 +141,10 @@ const showTip = (e, h) => { tip.innerHTML = h; tip.style.display = "block"; tip.
 const hideTip = () => { tip.style.display = "none"; };
 function opts(el, items, cur, pick) { el.replaceChildren(...items.map(([k, l]) => { const b = document.createElement("button"); b.textContent = l; b.setAttribute("aria-pressed", String(k === cur)); b.onclick = () => pick(k); return b; })); }
 const status = (t, cls = "") => { const s = $("#status"); s.textContent = t; s.className = "status " + cls; };
-const getJSON = u => fetch(u).then(r => { if (!r.ok) throw new Error(u + " " + r.status); return r.json(); });
+// "no-cache" revalidates with the server, so an updated data file is never read from a stale browser cache
+const getJSON = u => fetch(u, { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(u + " " + r.status); return r.json(); });
 async function pngData(url) {
-  const bmp = await createImageBitmap(await (await fetch(url)).blob(), { colorSpaceConversion: "none", premultiplyAlpha: "none" });
+  const bmp = await createImageBitmap(await (await fetch(url, { cache: "no-cache" })).blob(), { colorSpaceConversion: "none", premultiplyAlpha: "none" });
   const cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height;
   const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(bmp, 0, 0);
   return cx.getImageData(0, 0, bmp.width, bmp.height).data;
@@ -180,6 +182,7 @@ const treeCache = {};
 async function trees(g) { if (treeCache[g]) return treeCache[g]; const d = await pngData(`data/route/trees_g${g}.png`), a = new Uint8Array(NN); for (let k = 0; k < NN; k++) a[k] = d[k * 4]; return (treeCache[g] = a); }
 
 /* ---------- state ---------- */
+let avoidIndoor = false;
 let pts = [], hour = 14, K = 0.05, live = null, server = false, sel = 2, routes = null, ov = "utci", view = "2d";
 $("#date").value = A.date;
 const tagOf = () => "g" + grow;
@@ -196,15 +199,24 @@ function interp(arr, hours, t) {
   return arr[arr.length - 1];
 }
 function source() {   // per-edge hourly arrays: live run if there is one for this date and growth, else the precomputed day
-  if (live && live.date === $("#date").value && live.grow_m === grow) return { hours: live.hours, get: (v, i) => live.edges[v === "shadow" ? "shade" : v][i], allowed: i => live.edges.utci[i] !== undefined, tag: "live" };
+  if (live && live.date === $("#date").value && live.grow_m === grow) return { hours: live.hours, met: live.met, get: (v, i) => live.edges[v === "shadow" ? "shade" : v][i], allowed: i => live.edges.utci[i] !== undefined && !(avoidIndoor && (E[i][5] || 0) > 0.5), tag: "live" };
   if (!hasPre() || $("#date").value !== A.date) return null;
   const d = edgeCache[tagOf()], hrs = [...Array(A.hours).keys()];
-  return d ? { hours: hrs, get: (v, i) => d[v][i], allowed: () => true, tag: "pre" } : null;
+  return d ? { hours: hrs, met: A.met, get: (v, i) => d[v][i], allowed: i => !(avoidIndoor && (E[i][5] || 0) > 0.5), tag: "pre" } : null;
+}
+function airTemp(src, t) {
+  const m = src.met; if (!m || !m.length) return null;
+  return interp(m.map(r => r.Tair), m.map(r => r.it), t);
 }
 function seg(i, t, src) {
   const e = E[i], L = Math.max(e[2], 0.5), S = Math.max(-0.4, Math.min(0.4, e[3] / L)), sec = L / (tobler(S) / 3.6);
-  const u = src ? interp(src.get("utci", i), src.hours, t) : null, lit = src ? interp(src.get("shadow", i), src.hours, t) : null, sh = lit == null ? null : 1 - lit;  // SOLWEIG shadow is 1 in sun
-  return { L, sec, u, sh, mult: u == null ? 1 : 1 + K * Math.max(0, u - HEAT_FREE) };
+  // SOLWEIG models open ground only. The share of a segment under a roof (indoor or covered passage) gets UTCI = air
+  // temperature and counts as shaded (ASSUMPTION, section 8); the outdoor part keeps its modelled values.
+  const cov = E[i][5] || 0, ta = src ? airTemp(src, t) : null;
+  const uo = src ? interp(src.get("utci", i), src.hours, t) : null, lit = src ? interp(src.get("shadow", i), src.hours, t) : null;  // SOLWEIG shadow is 1 in sun
+  const u = uo == null ? ta : ta == null ? uo : cov * ta + (1 - cov) * uo;
+  const sh = lit == null ? (cov > 0 ? 1 : null) : cov + (1 - cov) * (1 - lit);
+  return { L, sec, u, sh, cov, mult: u == null ? 1 : 1 + K * Math.max(0, u - HEAT_FREE) };
 }
 function dijkstra(o, d, kind, src) {
   const n = nodes.length, best = new Float64Array(n).fill(Infinity), el = new Float64Array(n), prev = new Int32Array(n).fill(-1);
@@ -224,16 +236,16 @@ function dijkstra(o, d, kind, src) {
   return path.reverse();
 }
 function summarize(path, src) {
-  let t = 0, L = 0, climb = 0, perc = 0, uSum = 0, uT = 0, hot = 0, shadeL = 0, shL = 0, uMax = -Infinity; const prof = [];
+  let t = 0, L = 0, climb = 0, perc = 0, uSum = 0, uT = 0, hot = 0, shadeL = 0, shL = 0, uMax = -Infinity, covL = 0; const prof = [];
   for (const i of path) {
     const s = seg(i, hour + t / 3600, src), e = E[i];
     prof.push({ d: L, z: nodes[e[0]][2], u: s.u, sh: s.sh });
-    L += s.L; t += s.sec; perc += s.sec * s.mult; climb += Math.max(0, e[3]);
+    L += s.L; t += s.sec; perc += s.sec * s.mult; climb += Math.max(0, e[3]); covL += s.cov * s.L;
     if (s.u != null) { uSum += s.u * s.sec; uT += s.sec; if (s.u >= 32) hot += s.sec; uMax = Math.max(uMax, s.u); }
     if (s.sh != null) { shadeL += s.sh * s.L; shL += s.L; }
   }
   if (path.length) { const e = E[path[path.length - 1]]; prof.push({ d: L, z: nodes[e[1]][2], u: prof[prof.length - 1].u, sh: prof[prof.length - 1].sh }); }
-  return { L, t, perc, climb, uMean: uT ? uSum / uT : null, uMax: isFinite(uMax) ? uMax : null, hotMin: hot / 60, shade: shL ? shadeL / shL : null, prof };
+  return { L, t, perc, climb, covL, uMean: uT ? uSum / uT : null, uMax: isFinite(uMax) ? uMax : null, hotMin: hot / 60, shade: shL ? shadeL / shL : null, prof };
 }
 function nearest(lon, lat) {
   let b = -1, bd = Infinity; const cl = Math.cos(lat * Math.PI / 180);
@@ -254,7 +266,7 @@ function renderTable() {
   const t = $("#routes");
   if (!routes) { t.innerHTML = `<tr><td class="small">${pts.length ? "Now click an end point." : "Set a start and an end on the map."}</td></tr>`; $("#routeNote").textContent = ""; return; }
   const base = routes[0];
-  t.innerHTML = `<thead><tr><th>Route</th><th class="n">Distance</th><th class="n">Walk</th><th class="n">Feels like</th><th class="n">Climb</th><th class="n">Mean UTCI</th><th class="n">≥ 32 °C</th><th class="n">Shaded</th></tr></thead><tbody>${routes.map((r, i) => r ? `<tr data-i="${i}" class="${i === sel ? "sel" : ""}" style="cursor:pointer"><td><span class="sw" style="background:${RCOL[i]}"></span>${RNAME[i]}</td><td class="n">${fmt(r.L)} m</td><td class="n">${fmt(r.t / 60, 1)} min</td><td class="n">${fmt(r.perc / 60, 1)} min</td><td class="n">${fmt(r.climb)} m</td><td class="n">${fmt(r.uMean, 1)} °C</td><td class="n">${fmt(r.hotMin, 1)} min</td><td class="n">${r.shade == null ? "–" : fmt(100 * r.shade) + "%"}</td></tr>` : `<tr><td>${RNAME[i]}</td><td colspan="7">no route in the modelled area</td></tr>`).join("")}</tbody>`;
+  t.innerHTML = `<thead><tr><th>Route</th><th class="n">Distance</th><th class="n">Walk</th><th class="n">Feels like</th><th class="n">Climb</th><th class="n">Mean UTCI</th><th class="n">≥ 32 °C</th><th class="n">Shaded</th><th class="n">Covered</th></tr></thead><tbody>${routes.map((r, i) => r ? `<tr data-i="${i}" class="${i === sel ? "sel" : ""}" style="cursor:pointer"><td><span class="sw" style="background:${RCOL[i]}"></span>${RNAME[i]}</td><td class="n">${fmt(r.L)} m</td><td class="n">${fmt(r.t / 60, 1)} min</td><td class="n">${fmt(r.perc / 60, 1)} min</td><td class="n">${fmt(r.climb)} m</td><td class="n">${fmt(r.uMean, 1)} °C</td><td class="n">${fmt(r.hotMin, 1)} min</td><td class="n">${r.shade == null ? "–" : fmt(100 * r.shade) + "%"}</td><td class="n">${fmt(r.covL)} m</td></tr>` : `<tr><td>${RNAME[i]}</td><td colspan="8">no route in the modelled area</td></tr>`).join("")}</tbody>`;
   t.querySelectorAll("tr[data-i]").forEach(tr => tr.onclick = () => { sel = +tr.dataset.i; renderTable(); drawProfile(); drawRoutes(); });
   const e = routes[2];
   const dHot = base && e ? base.hotMin - e.hotMin : 0;
@@ -571,11 +583,18 @@ function draw3DRoutes() {
   const [x0, y1] = A.ul, toLocal = (lon, lat) => { const p = proj(lon, lat); return [(p[0] - x0) / RES, (y1 - p[1]) / RES]; };
   routes.forEach((r, i) => { if (!r) return; const P = [];
     for (const j of r.path) for (const [lon, lat] of E[j][4]) { const [cx, cy] = toLocal(lon, lat), ci = Math.min(NW - 1, Math.max(0, Math.round(cx))), cj = Math.min(NH - 1, Math.max(0, Math.round(cy))); P.push(new THREE.Vector3((cx - NW / 2) * RES, BASE.dem[cj * NW + ci] - T3.base + 2.5 + i * 0.6, (cy - NH / 2) * RES)); }
-    if (P.length > 1) routeGroup.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), Math.min(3000, P.length * 3), i === sel ? 6 : 4, 8), new THREE.MeshBasicMaterial({ color: RCOL[i], depthTest: false, transparent: true, opacity: i === sel ? 1 : 0.8 }))); });
+    if (P.length > 1) {
+      const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), Math.min(3000, P.length * 3), i === sel ? 6 : 4, 8);
+      const solid = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: RCOL[i] }));
+      // faint copy drawn over everything, so a route behind a building still shows as a ghost; a route through one
+      // (an indoor passage) shows only as the ghost
+      const ghost = new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: RCOL[i], depthTest: false, transparent: true, opacity: 0.22 }));
+      ghost.renderOrder = 5; routeGroup.add(solid, ghost);
+    } });
   // pins at the two ends, and frame the camera on the trip the first time it is drawn
   const ends = [E[routes[sel].path[0]][0], E[routes[sel].path[routes[sel].path.length - 1]][1]].map(n => { const [cx, cy] = toLocal(nodes[n][0], nodes[n][1]); return new THREE.Vector3((cx - NW / 2) * RES, nodes[n][2] - T3.base, (cy - NH / 2) * RES); });
   ends.forEach((v, k) => { const pin = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 80, 12).translate(0, 40, 0), new THREE.MeshBasicMaterial({ color: k ? 0xc0392b : 0xffffff, depthTest: false })); pin.position.copy(v); routeGroup.add(pin); });
-  routeGroup.children.forEach((m, j) => { m.renderOrder = 10 + j; });  // drawn over buildings, like a navigation app
+  routeGroup.children.forEach(m => { if (m.geometry.type === "CylinderGeometry") m.renderOrder = 10; });  // pins stay on top
   const key = pts.join("-");
   if (framed !== key) {
     framed = key; const mid = ends[0].clone().add(ends[1]).multiplyScalar(0.5), span = Math.max(300, ends[0].distanceTo(ends[1]));
@@ -608,6 +627,7 @@ $("#hour").oninput = e => { setHour(e.target.value); clearTimeout(tmo); tmo = se
 $("#k").oninput = e => { K = +e.target.value; $("#kv").textContent = K.toFixed(2); computeRoutes(); if (ov === "net") drawNet(); };
 $("#grow").onchange = async e => { grow = +e.target.value; if (hasPre()) await edgesFor(tagOf()); if (glReady) { T3.cdsm = await trees(grow); T3.treeCache = {}; placeTrees(T3, T3.dsm); } computeRoutes(); drawOverlay(); renderIn(); renderOut(); };
 $("#date").onchange = () => { computeRoutes(); drawOverlay(); };
+$("#avoidIn").onchange = e => { avoidIndoor = e.target.checked; computeRoutes(); if (ov === "net") drawNet(); };
 $("#clear").onclick = () => { pts = []; drawPts(); computeRoutes(); };
 
 /* ---------- live server ---------- */
@@ -726,6 +746,7 @@ const ASSUME = [
   ["Walking speed", "Tobler's hiking function: v = 6·exp(−3.5·|S + 0.05|) km/h, S = rise/run (5.0 km/h on the flat)", "Tobler (1993)", false],
   ["Heat weighting", "Perceived time = walking time × (1 + k·max(0, UTCI − 26 °C)), k = 0.05 per °C by default (slider)", "Form and k chosen for this prototype; 26 °C is the top of UTCI's “no thermal stress” band", true],
   ["“Feels like” minutes", "Sum of perceived time along the route", "Follows from the line above", true],
+  ["Indoor and covered passages", "The share of a segment under a roof (from the DSM) gets UTCI = air temperature and counts as shaded; segments more than half covered can be excluded with the checkbox", "SOLWEIG models open ground only; a roof removes direct and most diffuse sun, but indoor climate (air conditioning) is unknown", true],
   ["Strong heat stress", "UTCI ≥ 32 °C", "UTCI assessment scale (Bröde et al. 2012)", false],
   ["Shaded", "Share of the route in shade: 1 − SOLWEIG’s shadow value (which is 1 in full sun, 0 in shade), weighted by length; the profile marks stretches more than half shaded", "Display threshold chosen", true],
   ["Time dependence", "Each segment costed at the clock time you would reach it, interpolated between hourly model outputs", "Standard time-dependent shortest path", false],
