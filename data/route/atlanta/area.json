@@ -1,0 +1,349 @@
+{
+ "city": "atlanta",
+ "label": "Atlanta: Midtown and Georgia Tech's east edge",
+ "day_label": "Typical July 2026 day (median of each hour over the month), drawn on 2026-07-15",
+ "tz": "America/New_York",
+ "res_m": 2.0,
+ "width": 1200,
+ "height": 1200,
+ "zmin": 265.0,
+ "zscale": 0.1,
+ "crs": "EPSG:26916",
+ "ul": [
+  740867.0,
+  3741014.0
+ ],
+ "corners": [
+  [
+   -84.398716,
+   33.781887
+  ],
+  [
+   -84.372821,
+   33.781338
+  ],
+  [
+   -84.373481,
+   33.759715
+  ],
+  [
+   -84.39937,
+   33.760263
+  ]
+ ],
+ "date": "2026-07-15",
+ "met_source": "Open-Meteo ERA5 archive, median of each hour over July 2026",
+ "met": [
+  {
+   "it": 0.0,
+   "Tair": 25.0,
+   "RH": 90.0,
+   "U": 2.17,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 1.0,
+   "Tair": 24.5,
+   "RH": 90.0,
+   "U": 2.06,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 2.0,
+   "Tair": 23.9,
+   "RH": 94.0,
+   "U": 2.25,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 3.0,
+   "Tair": 23.6,
+   "RH": 93.0,
+   "U": 1.74,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 4.0,
+   "Tair": 23.3,
+   "RH": 95.0,
+   "U": 1.9,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 5.0,
+   "Tair": 23.0,
+   "RH": 95.0,
+   "U": 2.05,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 6.0,
+   "Tair": 22.7,
+   "RH": 96.0,
+   "U": 1.97,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 7.0,
+   "Tair": 22.7,
+   "RH": 96.0,
+   "U": 1.75,
+   "kdown": 2.0,
+   "kdiff": 2.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 8.0,
+   "Tair": 23.6,
+   "RH": 91.0,
+   "U": 1.59,
+   "kdown": 84.0,
+   "kdiff": 44.0,
+   "kdir": 235.6
+  },
+  {
+   "it": 9.0,
+   "Tair": 25.5,
+   "RH": 86.0,
+   "U": 1.93,
+   "kdown": 231.0,
+   "kdiff": 90.0,
+   "kdir": 402.5
+  },
+  {
+   "it": 10.0,
+   "Tair": 26.9,
+   "RH": 76.0,
+   "U": 2.08,
+   "kdown": 439.0,
+   "kdiff": 138.0,
+   "kdir": 530.0
+  },
+  {
+   "it": 11.0,
+   "Tair": 28.6,
+   "RH": 68.0,
+   "U": 2.09,
+   "kdown": 592.0,
+   "kdiff": 162.0,
+   "kdir": 583.0
+  },
+  {
+   "it": 12.0,
+   "Tair": 30.0,
+   "RH": 61.0,
+   "U": 2.37,
+   "kdown": 719.0,
+   "kdiff": 189.0,
+   "kdir": 627.8
+  },
+  {
+   "it": 13.0,
+   "Tair": 30.6,
+   "RH": 55.0,
+   "U": 2.61,
+   "kdown": 819.0,
+   "kdiff": 213.0,
+   "kdir": 635.4
+  },
+  {
+   "it": 14.0,
+   "Tair": 30.8,
+   "RH": 58.0,
+   "U": 2.13,
+   "kdown": 852.0,
+   "kdiff": 215.0,
+   "kdir": 682.7
+  },
+  {
+   "it": 15.0,
+   "Tair": 31.4,
+   "RH": 55.0,
+   "U": 2.19,
+   "kdown": 763.0,
+   "kdiff": 260.0,
+   "kdir": 505.6
+  },
+  {
+   "it": 16.0,
+   "Tair": 31.8,
+   "RH": 52.0,
+   "U": 2.61,
+   "kdown": 742.0,
+   "kdiff": 217.0,
+   "kdir": 583.2
+  },
+  {
+   "it": 17.0,
+   "Tair": 31.8,
+   "RH": 51.0,
+   "U": 2.76,
+   "kdown": 623.0,
+   "kdiff": 188.0,
+   "kdir": 556.9
+  },
+  {
+   "it": 18.0,
+   "Tair": 31.3,
+   "RH": 54.0,
+   "U": 3.1,
+   "kdown": 493.0,
+   "kdiff": 163.0,
+   "kdir": 523.2
+  },
+  {
+   "it": 19.0,
+   "Tair": 30.5,
+   "RH": 57.0,
+   "U": 2.61,
+   "kdown": 323.0,
+   "kdiff": 108.0,
+   "kdir": 490.2
+  },
+  {
+   "it": 20.0,
+   "Tair": 27.95,
+   "RH": 72.0,
+   "U": 2.14,
+   "kdown": 146.5,
+   "kdiff": 67.5,
+   "kdir": 306.8
+  },
+  {
+   "it": 21.0,
+   "Tair": 26.3,
+   "RH": 81.0,
+   "U": 2.33,
+   "kdown": 18.5,
+   "kdiff": 13.0,
+   "kdir": 63.6
+  },
+  {
+   "it": 22.0,
+   "Tair": 25.9,
+   "RH": 84.5,
+   "U": 1.95,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 23.0,
+   "Tair": 25.5,
+   "RH": 87.0,
+   "U": 2.1,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  }
+ ],
+ "quant": {
+  "utci": [
+   0.0,
+   0.25
+  ],
+  "tmrt": [
+   0.0,
+   0.4
+  ],
+  "shadow": [
+   0.0,
+   0.004
+  ]
+ },
+ "files": {
+  "utci": [
+   "utci_g0_00.png",
+   "utci_g0_03.png",
+   "utci_g0_06.png",
+   "utci_g0_09.png",
+   "utci_g0_12.png",
+   "utci_g0_15.png",
+   "utci_g0_18.png",
+   "utci_g0_21.png"
+  ],
+  "tmrt": [
+   "tmrt_g0_00.png",
+   "tmrt_g0_03.png",
+   "tmrt_g0_06.png",
+   "tmrt_g0_09.png",
+   "tmrt_g0_12.png",
+   "tmrt_g0_15.png",
+   "tmrt_g0_18.png",
+   "tmrt_g0_21.png"
+  ],
+  "shadow": [
+   "shadow_g0_00.png",
+   "shadow_g0_03.png",
+   "shadow_g0_06.png",
+   "shadow_g0_09.png",
+   "shadow_g0_12.png",
+   "shadow_g0_15.png",
+   "shadow_g0_18.png",
+   "shadow_g0_21.png"
+  ]
+ },
+ "growths": [
+  {
+   "m": 0,
+   "tree_km2": 1.13
+  },
+  {
+   "m": 1,
+   "tree_km2": 1.379
+  }
+ ],
+ "tag": "g0",
+ "hours": 24,
+ "variants": {
+  "g0": {
+   "utci": [
+    "utci_g0_00.png",
+    "utci_g0_03.png",
+    "utci_g0_06.png",
+    "utci_g0_09.png",
+    "utci_g0_12.png",
+    "utci_g0_15.png",
+    "utci_g0_18.png",
+    "utci_g0_21.png"
+   ],
+   "tmrt": [
+    "tmrt_g0_00.png",
+    "tmrt_g0_03.png",
+    "tmrt_g0_06.png",
+    "tmrt_g0_09.png",
+    "tmrt_g0_12.png",
+    "tmrt_g0_15.png",
+    "tmrt_g0_18.png",
+    "tmrt_g0_21.png"
+   ],
+   "shadow": [
+    "shadow_g0_00.png",
+    "shadow_g0_03.png",
+    "shadow_g0_06.png",
+    "shadow_g0_09.png",
+    "shadow_g0_12.png",
+    "shadow_g0_15.png",
+    "shadow_g0_18.png",
+    "shadow_g0_21.png"
+   ]
+  }
+ },
+ "timings": {
+  "g0": 2752
+ }
+}
