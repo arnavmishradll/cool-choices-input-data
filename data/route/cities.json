@@ -8,6 +8,10 @@
   "label": "Atlanta: Midtown and Georgia Tech's east edge, typical July 2026 day"
  },
  {
+  "id": "austin",
+  "label": "Austin: downtown, typical July 2026 day"
+ },
+ {
   "id": "seattle_heatdome",
   "label": "Seattle: downtown to Capitol Hill, 2021 heat dome"
  }
