@@ -1,0 +1,349 @@
+{
+ "city": "nyc",
+ "label": "New York: Lower Manhattan",
+ "day_label": "Typical July 2026 day (median of each hour over the month), drawn on 2026-07-15",
+ "tz": "America/New_York",
+ "res_m": 2.0,
+ "width": 1200,
+ "height": 1200,
+ "zmin": -19.0,
+ "zscale": 0.1,
+ "crs": "EPSG:26918",
+ "ul": [
+  582140.0,
+  4508572.0
+ ],
+ "corners": [
+  [
+   -74.027377,
+   40.723981
+  ],
+  [
+   -73.998962,
+   40.723739
+  ],
+  [
+   -73.999286,
+   40.702121
+  ],
+  [
+   -74.027691,
+   40.702364
+  ]
+ ],
+ "date": "2026-07-15",
+ "met_source": "Open-Meteo ERA5 archive, median of each hour over July 2026",
+ "met": [
+  {
+   "it": 0.0,
+   "Tair": 22.8,
+   "RH": 69.0,
+   "U": 2.06,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 1.0,
+   "Tair": 22.5,
+   "RH": 73.0,
+   "U": 2.23,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 2.0,
+   "Tair": 21.9,
+   "RH": 79.0,
+   "U": 2.22,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 3.0,
+   "Tair": 21.8,
+   "RH": 81.0,
+   "U": 2.3,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 4.0,
+   "Tair": 21.4,
+   "RH": 81.0,
+   "U": 1.85,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 5.0,
+   "Tair": 21.2,
+   "RH": 84.0,
+   "U": 1.7,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 6.0,
+   "Tair": 21.3,
+   "RH": 85.0,
+   "U": 1.95,
+   "kdown": 2.0,
+   "kdiff": 2.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 7.0,
+   "Tair": 21.8,
+   "RH": 81.0,
+   "U": 1.86,
+   "kdown": 75.0,
+   "kdiff": 34.0,
+   "kdir": 329.0
+  },
+  {
+   "it": 8.0,
+   "Tair": 22.3,
+   "RH": 73.0,
+   "U": 1.89,
+   "kdown": 244.0,
+   "kdiff": 73.0,
+   "kdir": 522.4
+  },
+  {
+   "it": 9.0,
+   "Tair": 23.8,
+   "RH": 62.0,
+   "U": 2.12,
+   "kdown": 416.0,
+   "kdiff": 100.0,
+   "kdir": 629.7
+  },
+  {
+   "it": 10.0,
+   "Tair": 24.9,
+   "RH": 61.0,
+   "U": 2.23,
+   "kdown": 580.0,
+   "kdiff": 129.0,
+   "kdir": 682.6
+  },
+  {
+   "it": 11.0,
+   "Tair": 26.4,
+   "RH": 55.0,
+   "U": 2.15,
+   "kdown": 745.0,
+   "kdiff": 133.0,
+   "kdir": 776.8
+  },
+  {
+   "it": 12.0,
+   "Tair": 27.7,
+   "RH": 51.0,
+   "U": 2.63,
+   "kdown": 829.0,
+   "kdiff": 138.0,
+   "kdir": 779.8
+  },
+  {
+   "it": 13.0,
+   "Tair": 28.2,
+   "RH": 48.0,
+   "U": 2.8,
+   "kdown": 864.0,
+   "kdiff": 143.0,
+   "kdir": 741.9
+  },
+  {
+   "it": 14.0,
+   "Tair": 28.7,
+   "RH": 45.0,
+   "U": 2.67,
+   "kdown": 874.0,
+   "kdiff": 151.0,
+   "kdir": 763.1
+  },
+  {
+   "it": 15.0,
+   "Tair": 28.5,
+   "RH": 47.0,
+   "U": 3.2,
+   "kdown": 783.0,
+   "kdiff": 157.0,
+   "kdir": 703.2
+  },
+  {
+   "it": 16.0,
+   "Tair": 28.0,
+   "RH": 46.0,
+   "U": 3.36,
+   "kdown": 656.0,
+   "kdiff": 161.0,
+   "kdir": 626.0
+  },
+  {
+   "it": 17.0,
+   "Tair": 27.9,
+   "RH": 47.0,
+   "U": 3.1,
+   "kdown": 544.0,
+   "kdiff": 139.0,
+   "kdir": 624.7
+  },
+  {
+   "it": 18.0,
+   "Tair": 27.2,
+   "RH": 49.0,
+   "U": 2.82,
+   "kdown": 401.0,
+   "kdiff": 100.0,
+   "kdir": 570.1
+  },
+  {
+   "it": 19.0,
+   "Tair": 26.3,
+   "RH": 56.0,
+   "U": 2.73,
+   "kdown": 216.0,
+   "kdiff": 78.0,
+   "kdir": 424.4
+  },
+  {
+   "it": 20.0,
+   "Tair": 24.85,
+   "RH": 55.0,
+   "U": 2.46,
+   "kdown": 83.0,
+   "kdiff": 39.0,
+   "kdir": 279.2
+  },
+  {
+   "it": 21.0,
+   "Tair": 24.15,
+   "RH": 58.5,
+   "U": 2.31,
+   "kdown": 3.5,
+   "kdiff": 3.0,
+   "kdir": 18.3
+  },
+  {
+   "it": 22.0,
+   "Tair": 23.45,
+   "RH": 63.5,
+   "U": 2.3,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 23.0,
+   "Tair": 23.0,
+   "RH": 69.5,
+   "U": 2.38,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  }
+ ],
+ "quant": {
+  "utci": [
+   0.0,
+   0.25
+  ],
+  "tmrt": [
+   0.0,
+   0.4
+  ],
+  "shadow": [
+   0.0,
+   0.004
+  ]
+ },
+ "files": {
+  "utci": [
+   "utci_g0_00.png",
+   "utci_g0_03.png",
+   "utci_g0_06.png",
+   "utci_g0_09.png",
+   "utci_g0_12.png",
+   "utci_g0_15.png",
+   "utci_g0_18.png",
+   "utci_g0_21.png"
+  ],
+  "tmrt": [
+   "tmrt_g0_00.png",
+   "tmrt_g0_03.png",
+   "tmrt_g0_06.png",
+   "tmrt_g0_09.png",
+   "tmrt_g0_12.png",
+   "tmrt_g0_15.png",
+   "tmrt_g0_18.png",
+   "tmrt_g0_21.png"
+  ],
+  "shadow": [
+   "shadow_g0_00.png",
+   "shadow_g0_03.png",
+   "shadow_g0_06.png",
+   "shadow_g0_09.png",
+   "shadow_g0_12.png",
+   "shadow_g0_15.png",
+   "shadow_g0_18.png",
+   "shadow_g0_21.png"
+  ]
+ },
+ "growths": [
+  {
+   "m": 0,
+   "tree_km2": 0.211
+  },
+  {
+   "m": 1,
+   "tree_km2": 0.256
+  }
+ ],
+ "tag": "g0",
+ "hours": 24,
+ "variants": {
+  "g0": {
+   "utci": [
+    "utci_g0_00.png",
+    "utci_g0_03.png",
+    "utci_g0_06.png",
+    "utci_g0_09.png",
+    "utci_g0_12.png",
+    "utci_g0_15.png",
+    "utci_g0_18.png",
+    "utci_g0_21.png"
+   ],
+   "tmrt": [
+    "tmrt_g0_00.png",
+    "tmrt_g0_03.png",
+    "tmrt_g0_06.png",
+    "tmrt_g0_09.png",
+    "tmrt_g0_12.png",
+    "tmrt_g0_15.png",
+    "tmrt_g0_18.png",
+    "tmrt_g0_21.png"
+   ],
+   "shadow": [
+    "shadow_g0_00.png",
+    "shadow_g0_03.png",
+    "shadow_g0_06.png",
+    "shadow_g0_09.png",
+    "shadow_g0_12.png",
+    "shadow_g0_15.png",
+    "shadow_g0_18.png",
+    "shadow_g0_21.png"
+   ]
+  }
+ },
+ "timings": {
+  "g0": 2213
+ }
+}
