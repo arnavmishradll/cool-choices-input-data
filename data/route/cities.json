@@ -28,6 +28,10 @@
   "label": "Philadelphia: Center City, typical July 2026 day"
  },
  {
+  "id": "denver",
+  "label": "Denver: downtown, typical July 2026 day"
+ },
+ {
   "id": "boulder",
   "label": "Boulder: downtown and Pearl Street, typical July 2026 day"
  },
