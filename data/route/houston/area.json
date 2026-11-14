@@ -1,0 +1,349 @@
+{
+ "city": "houston",
+ "label": "Houston: downtown",
+ "day_label": "Typical July 2026 day (median of each hour over the month), drawn on 2026-07-15",
+ "tz": "America/Chicago",
+ "res_m": 2.0,
+ "width": 1200,
+ "height": 1200,
+ "zmin": -2.0,
+ "zscale": 0.1,
+ "crs": "EPSG:26915",
+ "ul": [
+  270230.0,
+  3295795.0
+ ],
+ "corners": [
+  [
+   -95.376545,
+   29.771156
+  ],
+  [
+   -95.351739,
+   29.7716
+  ],
+  [
+   -95.351234,
+   29.749958
+  ],
+  [
+   -95.376034,
+   29.749515
+  ]
+ ],
+ "date": "2026-07-15",
+ "met_source": "Open-Meteo ERA5 archive, median of each hour over July 2026",
+ "met": [
+  {
+   "it": 0.0,
+   "Tair": 27.3,
+   "RH": 83.0,
+   "U": 2.25,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 1.0,
+   "Tair": 26.6,
+   "RH": 89.0,
+   "U": 2.08,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 2.0,
+   "Tair": 26.4,
+   "RH": 90.0,
+   "U": 1.89,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 3.0,
+   "Tair": 26.0,
+   "RH": 91.0,
+   "U": 1.72,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 4.0,
+   "Tair": 25.8,
+   "RH": 92.0,
+   "U": 1.79,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 5.0,
+   "Tair": 25.7,
+   "RH": 93.0,
+   "U": 1.58,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 6.0,
+   "Tair": 25.5,
+   "RH": 93.0,
+   "U": 1.57,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 7.0,
+   "Tair": 25.6,
+   "RH": 93.0,
+   "U": 1.35,
+   "kdown": 6.0,
+   "kdiff": 4.0,
+   "kdir": 29.6
+  },
+  {
+   "it": 8.0,
+   "Tair": 26.8,
+   "RH": 87.0,
+   "U": 1.27,
+   "kdown": 110.0,
+   "kdiff": 52.0,
+   "kdir": 317.7
+  },
+  {
+   "it": 9.0,
+   "Tair": 28.5,
+   "RH": 82.0,
+   "U": 1.41,
+   "kdown": 303.0,
+   "kdiff": 90.0,
+   "kdir": 538.4
+  },
+  {
+   "it": 10.0,
+   "Tair": 30.1,
+   "RH": 73.0,
+   "U": 2.11,
+   "kdown": 499.0,
+   "kdiff": 118.0,
+   "kdir": 648.1
+  },
+  {
+   "it": 11.0,
+   "Tair": 30.9,
+   "RH": 66.0,
+   "U": 1.91,
+   "kdown": 664.0,
+   "kdiff": 144.0,
+   "kdir": 684.6
+  },
+  {
+   "it": 12.0,
+   "Tair": 32.0,
+   "RH": 60.0,
+   "U": 1.58,
+   "kdown": 791.0,
+   "kdiff": 164.0,
+   "kdir": 708.0
+  },
+  {
+   "it": 13.0,
+   "Tair": 32.8,
+   "RH": 55.0,
+   "U": 1.85,
+   "kdown": 878.0,
+   "kdiff": 176.0,
+   "kdir": 727.4
+  },
+  {
+   "it": 14.0,
+   "Tair": 33.6,
+   "RH": 52.0,
+   "U": 1.95,
+   "kdown": 880.0,
+   "kdiff": 173.0,
+   "kdir": 702.4
+  },
+  {
+   "it": 15.0,
+   "Tair": 33.5,
+   "RH": 53.0,
+   "U": 2.21,
+   "kdown": 814.0,
+   "kdiff": 205.0,
+   "kdir": 629.7
+  },
+  {
+   "it": 16.0,
+   "Tair": 33.3,
+   "RH": 54.0,
+   "U": 2.2,
+   "kdown": 731.0,
+   "kdiff": 187.0,
+   "kdir": 589.5
+  },
+  {
+   "it": 17.0,
+   "Tair": 33.0,
+   "RH": 55.0,
+   "U": 2.77,
+   "kdown": 580.0,
+   "kdiff": 160.0,
+   "kdir": 563.1
+  },
+  {
+   "it": 18.0,
+   "Tair": 32.5,
+   "RH": 58.0,
+   "U": 2.66,
+   "kdown": 451.0,
+   "kdiff": 129.0,
+   "kdir": 515.1
+  },
+  {
+   "it": 19.0,
+   "Tair": 31.0,
+   "RH": 64.0,
+   "U": 2.24,
+   "kdown": 265.0,
+   "kdiff": 89.5,
+   "kdir": 429.85
+  },
+  {
+   "it": 20.0,
+   "Tair": 30.2,
+   "RH": 69.5,
+   "U": 2.29,
+   "kdown": 92.0,
+   "kdiff": 47.5,
+   "kdir": 253.45
+  },
+  {
+   "it": 21.0,
+   "Tair": 29.15,
+   "RH": 73.5,
+   "U": 2.16,
+   "kdown": 4.0,
+   "kdiff": 3.0,
+   "kdir": 8.7
+  },
+  {
+   "it": 22.0,
+   "Tair": 28.35,
+   "RH": 79.5,
+   "U": 2.42,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 23.0,
+   "Tair": 27.65,
+   "RH": 81.5,
+   "U": 2.27,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  }
+ ],
+ "quant": {
+  "utci": [
+   0.0,
+   0.25
+  ],
+  "tmrt": [
+   0.0,
+   0.4
+  ],
+  "shadow": [
+   0.0,
+   0.004
+  ]
+ },
+ "files": {
+  "utci": [
+   "utci_g0_00.png",
+   "utci_g0_03.png",
+   "utci_g0_06.png",
+   "utci_g0_09.png",
+   "utci_g0_12.png",
+   "utci_g0_15.png",
+   "utci_g0_18.png",
+   "utci_g0_21.png"
+  ],
+  "tmrt": [
+   "tmrt_g0_00.png",
+   "tmrt_g0_03.png",
+   "tmrt_g0_06.png",
+   "tmrt_g0_09.png",
+   "tmrt_g0_12.png",
+   "tmrt_g0_15.png",
+   "tmrt_g0_18.png",
+   "tmrt_g0_21.png"
+  ],
+  "shadow": [
+   "shadow_g0_00.png",
+   "shadow_g0_03.png",
+   "shadow_g0_06.png",
+   "shadow_g0_09.png",
+   "shadow_g0_12.png",
+   "shadow_g0_15.png",
+   "shadow_g0_18.png",
+   "shadow_g0_21.png"
+  ]
+ },
+ "growths": [
+  {
+   "m": 0,
+   "tree_km2": 0.681
+  },
+  {
+   "m": 1,
+   "tree_km2": 0.845
+  }
+ ],
+ "tag": "g0",
+ "hours": 24,
+ "variants": {
+  "g0": {
+   "utci": [
+    "utci_g0_00.png",
+    "utci_g0_03.png",
+    "utci_g0_06.png",
+    "utci_g0_09.png",
+    "utci_g0_12.png",
+    "utci_g0_15.png",
+    "utci_g0_18.png",
+    "utci_g0_21.png"
+   ],
+   "tmrt": [
+    "tmrt_g0_00.png",
+    "tmrt_g0_03.png",
+    "tmrt_g0_06.png",
+    "tmrt_g0_09.png",
+    "tmrt_g0_12.png",
+    "tmrt_g0_15.png",
+    "tmrt_g0_18.png",
+    "tmrt_g0_21.png"
+   ],
+   "shadow": [
+    "shadow_g0_00.png",
+    "shadow_g0_03.png",
+    "shadow_g0_06.png",
+    "shadow_g0_09.png",
+    "shadow_g0_12.png",
+    "shadow_g0_15.png",
+    "shadow_g0_18.png",
+    "shadow_g0_21.png"
+   ]
+  }
+ },
+ "timings": {
+  "g0": 1991
+ }
+}
