@@ -1,0 +1,349 @@
+{
+ "city": "miami",
+ "label": "Miami: downtown and Brickell",
+ "day_label": "Typical July 2026 day (median of each hour over the month), drawn on 2026-07-15",
+ "tz": "America/New_York",
+ "res_m": 2.0,
+ "width": 1200,
+ "height": 1200,
+ "zmin": -10.0,
+ "zscale": 0.1,
+ "crs": "EPSG:26917",
+ "ul": [
+  579989.0,
+  2850894.0
+ ],
+ "corners": [
+  [
+   -80.202267,
+   25.773961
+  ],
+  [
+   -80.178334,
+   25.773828
+  ],
+  [
+   -80.178483,
+   25.752158
+  ],
+  [
+   -80.202412,
+   25.752291
+  ]
+ ],
+ "date": "2026-07-15",
+ "met_source": "Open-Meteo ERA5 archive, median of each hour over July 2026",
+ "met": [
+  {
+   "it": 0.0,
+   "Tair": 28.8,
+   "RH": 75.0,
+   "U": 2.86,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 1.0,
+   "Tair": 28.3,
+   "RH": 77.0,
+   "U": 2.71,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 2.0,
+   "Tair": 28.2,
+   "RH": 78.0,
+   "U": 2.42,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 3.0,
+   "Tair": 28.0,
+   "RH": 78.0,
+   "U": 2.42,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 4.0,
+   "Tair": 27.9,
+   "RH": 78.0,
+   "U": 2.64,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 5.0,
+   "Tair": 27.9,
+   "RH": 78.0,
+   "U": 2.7,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 6.0,
+   "Tair": 27.7,
+   "RH": 79.0,
+   "U": 2.58,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 7.0,
+   "Tair": 27.6,
+   "RH": 80.0,
+   "U": 2.46,
+   "kdown": 3.0,
+   "kdiff": 3.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 8.0,
+   "Tair": 28.4,
+   "RH": 77.0,
+   "U": 2.64,
+   "kdown": 94.0,
+   "kdiff": 45.0,
+   "kdir": 343.1
+  },
+  {
+   "it": 9.0,
+   "Tair": 30.0,
+   "RH": 69.0,
+   "U": 2.41,
+   "kdown": 283.0,
+   "kdiff": 92.0,
+   "kdir": 502.4
+  },
+  {
+   "it": 10.0,
+   "Tair": 30.8,
+   "RH": 65.0,
+   "U": 2.58,
+   "kdown": 470.0,
+   "kdiff": 124.0,
+   "kdir": 591.2
+  },
+  {
+   "it": 11.0,
+   "Tair": 31.3,
+   "RH": 61.0,
+   "U": 2.89,
+   "kdown": 651.0,
+   "kdiff": 149.0,
+   "kdir": 656.1
+  },
+  {
+   "it": 12.0,
+   "Tair": 32.0,
+   "RH": 59.0,
+   "U": 2.74,
+   "kdown": 793.0,
+   "kdiff": 191.0,
+   "kdir": 677.3
+  },
+  {
+   "it": 13.0,
+   "Tair": 32.2,
+   "RH": 56.0,
+   "U": 3.14,
+   "kdown": 884.0,
+   "kdiff": 171.0,
+   "kdir": 721.1
+  },
+  {
+   "it": 14.0,
+   "Tair": 32.5,
+   "RH": 58.0,
+   "U": 3.61,
+   "kdown": 925.0,
+   "kdiff": 169.0,
+   "kdir": 758.8
+  },
+  {
+   "it": 15.0,
+   "Tair": 32.3,
+   "RH": 58.0,
+   "U": 3.29,
+   "kdown": 822.0,
+   "kdiff": 191.0,
+   "kdir": 654.8
+  },
+  {
+   "it": 16.0,
+   "Tair": 32.2,
+   "RH": 59.0,
+   "U": 3.3,
+   "kdown": 749.0,
+   "kdiff": 187.0,
+   "kdir": 607.2
+  },
+  {
+   "it": 17.0,
+   "Tair": 31.6,
+   "RH": 59.0,
+   "U": 3.0,
+   "kdown": 632.0,
+   "kdiff": 142.0,
+   "kdir": 667.1
+  },
+  {
+   "it": 18.0,
+   "Tair": 31.1,
+   "RH": 63.0,
+   "U": 3.08,
+   "kdown": 458.0,
+   "kdiff": 121.0,
+   "kdir": 592.0
+  },
+  {
+   "it": 19.0,
+   "Tair": 30.5,
+   "RH": 64.0,
+   "U": 2.91,
+   "kdown": 264.0,
+   "kdiff": 85.0,
+   "kdir": 483.3
+  },
+  {
+   "it": 20.0,
+   "Tair": 30.0,
+   "RH": 69.0,
+   "U": 2.29,
+   "kdown": 76.0,
+   "kdiff": 38.0,
+   "kdir": 275.4
+  },
+  {
+   "it": 21.0,
+   "Tair": 29.65,
+   "RH": 68.5,
+   "U": 2.62,
+   "kdown": 1.0,
+   "kdiff": 1.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 22.0,
+   "Tair": 29.25,
+   "RH": 70.0,
+   "U": 2.58,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  },
+  {
+   "it": 23.0,
+   "Tair": 28.95,
+   "RH": 73.5,
+   "U": 2.73,
+   "kdown": 0.0,
+   "kdiff": 0.0,
+   "kdir": 0.0
+  }
+ ],
+ "quant": {
+  "utci": [
+   0.0,
+   0.25
+  ],
+  "tmrt": [
+   0.0,
+   0.4
+  ],
+  "shadow": [
+   0.0,
+   0.004
+  ]
+ },
+ "files": {
+  "utci": [
+   "utci_g0_00.png",
+   "utci_g0_03.png",
+   "utci_g0_06.png",
+   "utci_g0_09.png",
+   "utci_g0_12.png",
+   "utci_g0_15.png",
+   "utci_g0_18.png",
+   "utci_g0_21.png"
+  ],
+  "tmrt": [
+   "tmrt_g0_00.png",
+   "tmrt_g0_03.png",
+   "tmrt_g0_06.png",
+   "tmrt_g0_09.png",
+   "tmrt_g0_12.png",
+   "tmrt_g0_15.png",
+   "tmrt_g0_18.png",
+   "tmrt_g0_21.png"
+  ],
+  "shadow": [
+   "shadow_g0_00.png",
+   "shadow_g0_03.png",
+   "shadow_g0_06.png",
+   "shadow_g0_09.png",
+   "shadow_g0_12.png",
+   "shadow_g0_15.png",
+   "shadow_g0_18.png",
+   "shadow_g0_21.png"
+  ]
+ },
+ "growths": [
+  {
+   "m": 0,
+   "tree_km2": 0.604
+  },
+  {
+   "m": 1,
+   "tree_km2": 0.745
+  }
+ ],
+ "tag": "g0",
+ "hours": 24,
+ "variants": {
+  "g0": {
+   "utci": [
+    "utci_g0_00.png",
+    "utci_g0_03.png",
+    "utci_g0_06.png",
+    "utci_g0_09.png",
+    "utci_g0_12.png",
+    "utci_g0_15.png",
+    "utci_g0_18.png",
+    "utci_g0_21.png"
+   ],
+   "tmrt": [
+    "tmrt_g0_00.png",
+    "tmrt_g0_03.png",
+    "tmrt_g0_06.png",
+    "tmrt_g0_09.png",
+    "tmrt_g0_12.png",
+    "tmrt_g0_15.png",
+    "tmrt_g0_18.png",
+    "tmrt_g0_21.png"
+   ],
+   "shadow": [
+    "shadow_g0_00.png",
+    "shadow_g0_03.png",
+    "shadow_g0_06.png",
+    "shadow_g0_09.png",
+    "shadow_g0_12.png",
+    "shadow_g0_15.png",
+    "shadow_g0_18.png",
+    "shadow_g0_21.png"
+   ]
+  }
+ },
+ "timings": {
+  "g0": 1891
+ }
+}
