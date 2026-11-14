@@ -20,6 +20,10 @@
   "label": "Los Angeles: downtown, typical July 2026 day"
  },
  {
+  "id": "philadelphia",
+  "label": "Philadelphia: Center City, typical July 2026 day"
+ },
+ {
   "id": "seattle_heatdome",
   "label": "Seattle: downtown to Capitol Hill, 2021 heat dome"
  }
