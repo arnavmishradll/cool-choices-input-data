@@ -803,20 +803,33 @@ img.fig { width: 100%; border: 1px solid var(--line); }
 
 <section class="slide" id="part5" data-title="Part 5: Cool routes prototype" style="justify-content:center">
   <h1>Cool routes: walking by perceived effort</h1>
-  <p class="sub">A first prototype that runs SOLWEIG on our Seattle rasters and routes around heat and hills</p>
+  <p class="sub">A prototype that runs SOLWEIG on our rasters and routes around heat and hills, precomputed for 13 downtowns on a typical July 2026 day</p>
   <p><a href="route.html" style="font-size:20px">Open the prototype →</a></p>
 </section>
 
 <section class="slide" data-title="Cool routes: how it works">
   <h2>How it works</h2>
   <ol>
-    <li><b>Study area:</b> downtown Seattle to Capitol Hill, 2 × 2 km of walking paths (4,766 intersections from OpenStreetMap) inside a 2.4 km model area, so shade from buildings just outside still counts.</li>
+    <li><b>Study areas:</b> one per city, 2 × 2 km of walking paths from OpenStreetMap inside a 2.4 km model area (so shade from buildings just outside still counts), centred on the same downtown landmark as the city's 3D block. Seattle's runs from downtown to Capitol Hill.</li>
     <li><b>SOLWEIG-light</b> on our DSM, DEM, lidar canopy and land cover at 2 m: sky view, then hour-by-hour shadows, mean radiant temperature (Tmrt) and UTCI.</li>
-    <li><b>Weather</b> for any date from Open-Meteo. The default day is the June 2021 heat dome.</li>
+    <li><b>Weather:</b> each city's default is a typical July 2026 day, the median of each hour over the month from Open-Meteo (ERA5). Seattle's June 2021 heat dome is kept as a separate choice, and live runs take any date.</li>
     <li><b>Every path segment</b> gets its hourly UTCI and shade, and the browser finds three routes: shortest, fastest (slope-aware, Tobler's walking speed) and least perceived effort (slope and heat).</li>
     <li><b>Live mode:</b> a small local server crops the model to a corridor around the shortest route and runs only the hours of the walk, reusing the precomputed sky view.</li>
     <li><b>Tree crowns</b> can be grown 0–3 m; +1 m is the default because NAIP shows the first metre around lidar crowns is mostly vegetation.</li>
   </ol>
+</section>
+
+<section class="slide" data-title="Cool routes: 13 cities">
+  <h2>13 cities on a typical July day</h2>
+  <div class="tw"><table>
+    <thead><tr><th>City</th><th>Study area</th><th class="n">Peak air temp.</th><th class="n">UTCI at 3 pm, lidar crowns</th><th class="n">UTCI at 3 pm, +1 m crowns</th><th class="n">Shaded at 3 pm, lidar</th><th class="n">Shaded at 3 pm, +1 m</th><th class="n">Hours ≥ 32 °C UTCI</th><th></th></tr></thead>
+    <tbody><tr><td>Tucson</td><td>downtown</td><td class="n">38.8 °C</td><td class="n">45.7 °C</td><td class="n">45.4 °C</td><td class="n">18%</td><td class="n">22%</td><td class="n">13 h</td><td class="n"><a href="route.html?city=tucson">open</a></td></tr><tr><td>Dallas</td><td>downtown</td><td class="n">36.5 °C</td><td class="n">42.9 °C</td><td class="n">42.7 °C</td><td class="n">20%</td><td class="n">22%</td><td class="n">11 h</td><td class="n"><a href="route.html?city=dallas">open</a></td></tr><tr><td>Austin</td><td>downtown</td><td class="n">35.2 °C</td><td class="n">41.3 °C</td><td class="n">41.0 °C</td><td class="n">24%</td><td class="n">27%</td><td class="n">11 h</td><td class="n"><a href="route.html?city=austin">open</a></td></tr><tr><td>Houston</td><td>downtown</td><td class="n">33.6 °C</td><td class="n">40.8 °C</td><td class="n">40.6 °C</td><td class="n">24%</td><td class="n">26%</td><td class="n">12 h</td><td class="n"><a href="route.html?city=houston">open</a></td></tr><tr><td>Denver</td><td>downtown</td><td class="n">34.5 °C</td><td class="n">38.8 °C</td><td class="n">38.5 °C</td><td class="n">30%</td><td class="n">33%</td><td class="n">8 h</td><td class="n"><a href="route.html?city=denver">open</a></td></tr><tr><td>Miami</td><td>downtown and Brickell</td><td class="n">32.5 °C</td><td class="n">38.0 °C</td><td class="n">37.6 °C</td><td class="n">35%</td><td class="n">40%</td><td class="n">10 h</td><td class="n"><a href="route.html?city=miami">open</a></td></tr><tr><td>Los Angeles</td><td>downtown</td><td class="n">32.4 °C</td><td class="n">37.4 °C</td><td class="n">37.1 °C</td><td class="n">36%</td><td class="n">38%</td><td class="n">7 h</td><td class="n"><a href="route.html?city=los_angeles">open</a></td></tr><tr><td>Atlanta</td><td>Midtown and Georgia Tech's east edge</td><td class="n">31.8 °C</td><td class="n">37.1 °C</td><td class="n">36.7 °C</td><td class="n">33%</td><td class="n">38%</td><td class="n">9 h</td><td class="n"><a href="route.html?city=atlanta">open</a></td></tr><tr><td>Boulder</td><td>downtown and Pearl Street</td><td class="n">33.2 °C</td><td class="n">35.7 °C</td><td class="n">35.2 °C</td><td class="n">40%</td><td class="n">46%</td><td class="n">8 h</td><td class="n"><a href="route.html?city=boulder">open</a></td></tr><tr><td>Philadelphia</td><td>Center City</td><td class="n">28.6 °C</td><td class="n">33.0 °C</td><td class="n">32.8 °C</td><td class="n">41%</td><td class="n">43%</td><td class="n">4 h</td><td class="n"><a href="route.html?city=philadelphia">open</a></td></tr><tr><td>New York</td><td>Lower Manhattan</td><td class="n">28.7 °C</td><td class="n">31.9 °C</td><td class="n">31.8 °C</td><td class="n">47%</td><td class="n">48%</td><td class="n">2 h</td><td class="n"><a href="route.html?city=nyc">open</a></td></tr><tr><td>Seattle</td><td>downtown to Capitol Hill</td><td class="n">23.1 °C</td><td class="n">27.2 °C</td><td class="n">26.9 °C</td><td class="n">43%</td><td class="n">46%</td><td class="n">0 h</td><td class="n"><a href="route.html?city=seattle">open</a></td></tr><tr><td>San Francisco</td><td>Financial District and SoMa</td><td class="n">17.8 °C</td><td class="n">19.6 °C</td><td class="n">19.3 °C</td><td class="n">37%</td><td class="n">39%</td><td class="n">0 h</td><td class="n"><a href="route.html?city=san_francisco">open</a></td></tr></tbody></table></div>
+  <ul>
+    <li><b>Tucson</b> has the hottest walks (45.7 °C UTCI at 3 pm, strong heat stress for 13 hours); Seattle, San Francisco never reach strong heat stress on its typical day.</li>
+    <li>Growing crowns by 1 m adds 1–6 points of shade on the walking network at 3 pm but lowers its average UTCI by only 0.1–0.5 °C: most of the network is streets between buildings, where crowns don't reach.</li>
+    <li>The gap between cities (over 26 °C) is far larger than what wider crowns change, so route choice within a city matters most in the hottest ones.</li>
+  </ul>
+  <p class="small">Averages are over the outdoor walking network, weighted by length (covered passages left out). UTCI 32 °C is the start of strong heat stress. Shade is the share of path length in building or tree shadow.</p>
 </section>
 
 <section class="slide" data-title="Cool routes: speed and checks">
@@ -824,8 +837,8 @@ img.fig { width: 100%; border: 1px solid var(--line); }
   <div class="two">
     <div><h3>Run times (16 threads, laptop)</h3><div class="tw"><table>
       <thead><tr><th>Run</th><th class="n">Time</th></tr></thead><tbody>
-      <tr><td>Study area, 24 hours (2.4 km at 2 m)</td><td class="n">43 min</td></tr>
-      <tr><td>&nbsp;&nbsp;of which sky view (geometry, done once)</td><td class="n">16 min</td></tr>
+      <tr><td>Study area, 24 hours (2.4 km at 2 m)</td><td class="n">30–45 min</td></tr>
+      <tr><td>&nbsp;&nbsp;of which sky view (geometry, done once)</td><td class="n">9–16 min</td></tr>
       <tr><td>Live trip, 0.5 km (2 hours modelled)</td><td class="n">21 s</td></tr>
       <tr><td>Live trip, 1.1 km</td><td class="n">2.4 min</td></tr>
       <tr><td>Live trip, 1.5–1.8 km diagonal</td><td class="n">~5 min</td></tr>
