@@ -267,34 +267,34 @@
  },
  "files": {
   "utci": [
-   "utci_g0_00.png",
-   "utci_g0_03.png",
-   "utci_g0_06.png",
-   "utci_g0_09.png",
-   "utci_g0_12.png",
-   "utci_g0_15.png",
-   "utci_g0_18.png",
-   "utci_g0_21.png"
+   "utci_g1_00.png",
+   "utci_g1_03.png",
+   "utci_g1_06.png",
+   "utci_g1_09.png",
+   "utci_g1_12.png",
+   "utci_g1_15.png",
+   "utci_g1_18.png",
+   "utci_g1_21.png"
   ],
   "tmrt": [
-   "tmrt_g0_00.png",
-   "tmrt_g0_03.png",
-   "tmrt_g0_06.png",
-   "tmrt_g0_09.png",
-   "tmrt_g0_12.png",
-   "tmrt_g0_15.png",
-   "tmrt_g0_18.png",
-   "tmrt_g0_21.png"
+   "tmrt_g1_00.png",
+   "tmrt_g1_03.png",
+   "tmrt_g1_06.png",
+   "tmrt_g1_09.png",
+   "tmrt_g1_12.png",
+   "tmrt_g1_15.png",
+   "tmrt_g1_18.png",
+   "tmrt_g1_21.png"
   ],
   "shadow": [
-   "shadow_g0_00.png",
-   "shadow_g0_03.png",
-   "shadow_g0_06.png",
-   "shadow_g0_09.png",
-   "shadow_g0_12.png",
-   "shadow_g0_15.png",
-   "shadow_g0_18.png",
-   "shadow_g0_21.png"
+   "shadow_g1_00.png",
+   "shadow_g1_03.png",
+   "shadow_g1_06.png",
+   "shadow_g1_09.png",
+   "shadow_g1_12.png",
+   "shadow_g1_15.png",
+   "shadow_g1_18.png",
+   "shadow_g1_21.png"
   ]
  },
  "growths": [
@@ -307,7 +307,7 @@
    "tree_km2": 0.562
   }
  ],
- "tag": "g0",
+ "tag": "g1",
  "hours": 24,
  "variants": {
   "g0": {
@@ -341,9 +341,41 @@
     "shadow_g0_18.png",
     "shadow_g0_21.png"
    ]
+  },
+  "g1": {
+   "utci": [
+    "utci_g1_00.png",
+    "utci_g1_03.png",
+    "utci_g1_06.png",
+    "utci_g1_09.png",
+    "utci_g1_12.png",
+    "utci_g1_15.png",
+    "utci_g1_18.png",
+    "utci_g1_21.png"
+   ],
+   "tmrt": [
+    "tmrt_g1_00.png",
+    "tmrt_g1_03.png",
+    "tmrt_g1_06.png",
+    "tmrt_g1_09.png",
+    "tmrt_g1_12.png",
+    "tmrt_g1_15.png",
+    "tmrt_g1_18.png",
+    "tmrt_g1_21.png"
+   ],
+   "shadow": [
+    "shadow_g1_00.png",
+    "shadow_g1_03.png",
+    "shadow_g1_06.png",
+    "shadow_g1_09.png",
+    "shadow_g1_12.png",
+    "shadow_g1_15.png",
+    "shadow_g1_18.png",
+    "shadow_g1_21.png"
+   ]
   }
  },
  "timings": {
-  "g0": 2138
+  "g1": 4629
  }
 }
