@@ -32,6 +32,10 @@
   "label": "Miami: downtown and Brickell, typical July 2026 day"
  },
  {
+  "id": "dallas",
+  "label": "Dallas: downtown, typical July 2026 day"
+ },
+ {
   "id": "seattle_heatdome",
   "label": "Seattle: downtown to Capitol Hill, 2021 heat dome"
  }
